@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"module": "CommonJS",
+		"sourceMap": true,
+		"outDir": "bin",
+		"noImplicitAny": true,
+		"allowJs": true,
+		"moduleResolution": "Node",
+		"baseUrl": ".",
+		"paths": {
+			"*": [
+				"node_modules/*"
+			]
+		},
+		"target": "ES2019",
+		"experimentalDecorators": true
+	},
+	"include": [
+		"src"
+	]
+}
