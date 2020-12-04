@@ -11,7 +11,10 @@ export class WebhooksManager {
 
   public async init() {
     this._app.use(this._router);
-    this._router.get(`${this._routePath}/:id`, (req, res) => this._webhookTriggered(req.params.id));
+    this._router.get(`${this._routePath}/:id`, (req: express.Request, res: express.Response) => {
+      this._webhookTriggered(req.params.id);
+      res.sendStatus(200);
+    });
   }
 
   public addRoute(id: string, handler: () => void) {

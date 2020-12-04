@@ -31,8 +31,12 @@ export class DockerManager {
       const params: DockerImagesModel.PullImageParameters = {
         fromSrc: imageUrl,
       }
-      await this._docker.createImage(params);
-      return true;
+      await this._docker.createImage(params); 
+      const images = await this._docker.listImages();
+      for (const image of images) {
+        this._logger.log(image.RepoDigests, image.RepoTags);
+      }
+      return true; 
     } catch (e) {
       this._logger.error(e);
     }

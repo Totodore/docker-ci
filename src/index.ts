@@ -29,7 +29,6 @@ class App {
     } catch (e) {
       this._logger.error("Error with getting informations of container :", e);
     }
-    
   }
 
   private async _addContainerConf(containerInfos: Dockerode.ContainerInspectInfo, label: DockerCiLabels) {
