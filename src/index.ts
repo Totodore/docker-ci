@@ -16,28 +16,58 @@ class App {
     await this._dockerManager.init();
     await this._webhooksManager.init();
 
-    this._dockerManager.addContainerEventListener("create", (res) => this._onCreateContainer(res));
+    this._dockerManager.addContainerEventListener("start", (res) => this._onCreateContainer(res));
+
+    this._logger.log("Connected to docker endpoint.");
+    this._logger.log("Watching container creation.");
+    this._logger.log(`Listening webhooks on ${this._webhooksManager.webhookUrl}/:id`);
   }
 
+  /**
+   * Called when a container is recreated/created
+   * If docker-ci.enable is true :
+   * Add a route to the webhooks with the id of the container or the given name "docker-ci.name"
+   */
   private async _onCreateContainer(res: DockerEventsModel.EventResponse) {
-    this._logger.log(res.actor.ID);
+    const containerName = res.Actor.Attributes.name;
+    this._logger.log("Container creation detected :", containerName);
+
     try {
-      const containerInfos = await this._dockerManager.getContainer(res.actor.ID).inspect();
+      const containerInfos = await this._dockerManager.getContainer(res.Actor.ID).inspect();
       const labels: DockerCiLabels = containerInfos.Config.Labels;
-      if (labels["docker-ci.enable"])
-        this._addContainerConf(containerInfos, labels);
+      const routeId = labels["docker-ci.name"] || containerName;
+      if (labels["docker-ci.enable"]) {
+        this._logger.log("Docker-ci enabled, adding container to webhook conf");
+        this._addContainerConf(routeId, containerInfos.Id);
+      }
+      else
+        this._logger.log("Docker-ci not enabled, skipping...");
+      
     } catch (e) {
       this._logger.error("Error with getting informations of container :", e);
     }
   }
 
-  private async _addContainerConf(containerInfos: Dockerode.ContainerInspectInfo, label: DockerCiLabels) {
-    this._webhooksManager.addRoute(containerInfos.Name,
-      () => this._onUrlTriggered(containerInfos.Name, containerInfos.Id, label["docker-ci.url"]));
+  /**
+   * Add the route to wenhooks
+   * @param routeId 
+   * @param id 
+   */
+  private async _addContainerConf(routeId: string, id: string) {
+    this._logger.log(`New webhook available at : ${this._webhooksManager.webhookUrl}/${routeId}`);
+    this._webhooksManager.addRoute(routeId, () => this._onUrlTriggered(id));
   }
 
-  private async _onUrlTriggered(name: string, id: string, url: string) {
-    await this._dockerManager.pullImage(url);
+  /**
+   * Triggered when someone call the url 
+   * @param id the id/name of the container to reload
+   */
+  private async _onUrlTriggered(id: string) {
+    const containerInfos = await this._dockerManager.getContainer(id).inspect();
+    await this._dockerManager.pullImage(containerInfos.Image);
+    await this._dockerManager.recreateContainer(id);
+    // await this._dockerManager.getContainer(id).stop()
+    // await this._dockerManager.getContainer(id)
   }
 
 }
