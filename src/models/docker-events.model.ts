@@ -39,14 +39,14 @@ export namespace DockerEventsModel {
   }
 
   export interface EventResponse {
-    type: "container" | "image",
-    action: ContainerEvents | ImageEvents,
-    actor: {
+    Type: "container" | "image",
+    Action: keyof typeof ContainerEvents | keyof typeof ImageEvents,
+    Actor: {
       ID: string;
       Attributes: { [k: string]: string }
     },
-    time: number,
-    timeNano: number
+    Time: number,
+    TimeNano: number
   }
 
 }
