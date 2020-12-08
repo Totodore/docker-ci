@@ -6,6 +6,26 @@ Docker-CI watch for container creations, it means that you don't have to restart
 
 Docker-CI will then create a route corresponding to this pattern : ```http(s)://0.0.0.0[:port]/deploy/:appName``` where the appName correspond to the name you gave to your container or to the name you gave through the option ```docker-ci.name```
 You can then set a Github Automation with an [Image building](https://github.com/actions/starter-workflows/blob/a571f2981ab5a22dfd9158f20646c2358db3654c/ci/docker-publish.yml) and you can then add a webhook to trigger the above url when the image is built and stored in the Github Package Registry
+
+## Base configuration :
+This is the default configuration, you just have to add docker-ci.enable in your docker-compose.yml :
+
+|Name|Type|Description|
+|----|----|-----------|
+| ```docker-ci.enable```|```boolean```|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
+| ```docker-ci.name```|```string (Optional)```|Set a custom name for the endpoint, by default it is the name of the container|
+
+
+## Authentification
+In case your package is private, you can specify credentials in your config :
+
+|Name|Type|Description|
+|----|----|-----------|
+| ```docker-ci.username```|```string (Optional)```|Set a username for the docker package registry auth|
+| ```docker-ci.password```|```string (Optional)```|Set a password or a token for the docker package registry auth|
+| ```docker-ci.auth-server```|```string (Optional)```|Set an auth server for the docker package registry auth|
+
+
 ## Example
 
 ### docker-compose.yml of docker-ci app
@@ -29,7 +49,7 @@ services:
 version: "3.7"
 services:
   app:
-    image: ghcr.io/totodore/automate:latest  ##The github registry link
+    image: ghcr.io/totodore/automate:latest  ##The package registry link
     container_name: automate
     tty: true
     expose:
@@ -37,7 +57,11 @@ services:
     restart: always
     labels:
       - "docker-ci.enabled=true"
-      - "docker-ci.name=automate"
+      - "docker-ci.name=automate" #This argument is optional by default it is the name of the container (container_name)
+      # The following is only if you use auth to get private package
+      - "docker-ci.password=MyPasswordOrToken" #Registry Password or token 
+      - "docker-ci.username=MyRegistryUsername"
+      - "docker-ci.auth-server=MyRegistryURL" #Ex for Github Registry : https://ghcr.io or https://docker.pkg.github.com
 ```
 
 ### docker-publish in the github repo :
@@ -99,8 +123,11 @@ jobs:
           WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }} #This Docker secret correspond to http(s)://IP[:port]/deploy/automate
 ```
 
-## Labels available :
+## All Labels :
 |Name|Type|Description|
 |----|----|-----------|
 | ```docker-ci.enable```|```boolean```|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
 | ```docker-ci.name```|```string (Optional)```|Set a custom name for the endpoint, by default it is the name of the container|
+| ```docker-ci.username```|```string (Optional)```|Set a username for the docker package registry auth|
+| ```docker-ci.password```|```string (Optional)```|Set a password or a token for the docker package registry auth|
+| ```docker-ci.auth-server```|```string (Optional)```|Set an auth server for the docker package registry auth|
