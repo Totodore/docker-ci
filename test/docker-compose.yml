@@ -1,7 +1,7 @@
 version: "3"
 services: 
   app:
-    image: "hello-world"
+    image: "httpd"
     labels: 
       - "docker-ci.enable=true"
       - "docker-ci.name=hello-world"
