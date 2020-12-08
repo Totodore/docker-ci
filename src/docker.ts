@@ -50,7 +50,7 @@ export class DockerManager {
     for (const container of containers) {
       const labels: DockerCiLabels = container.Labels;
       if (labels["docker-ci.enable"] === "true")
-        response[container.Id] = labels["docker-ci.name"] || (await this.getContainer(container.Id).inspect()).Name;
+        response[container.Id] = labels["docker-ci.name"] || (await this.getContainer(container.Id).inspect()).Name.replace("/", "")
     }
     return response;
   }
