@@ -50,7 +50,7 @@ export class DockerManager {
     for (const container of containers) {
       const labels: DockerCiLabels = container.Labels;
       if (labels["docker-ci.enable"] === "true")
-        response[container.Id] = labels["docker-ci.name"] || (await this.getContainer(container.Id).inspect()).Name;
+        response[container.Id] = labels["docker-ci.name"] || (await this.getContainer(container.Id).inspect()).Name.replace("/", "")
     }
     return response;
   }
@@ -85,13 +85,20 @@ export class DockerManager {
    * @param containerId 
    */
   public async recreateContainer(containerId: string) {
-    const container = this.getContainer(containerId);
+    let container: Docker.Container = this.getContainer(containerId);
     const infos = await container.inspect();
     this._logger.log("Stopping container");
     await container.stop();
     this._logger.log("Removing container");
     await container.remove();
     this._logger.log("Recreating container");
-    (await this._docker.createContainer({ ...infos.Config, name: infos.Name })).start();
+    container = await this._docker.createContainer({
+      ...infos.Config,
+      name: infos.Name,
+      NetworkingConfig: {
+        EndpointsConfig: infos.NetworkSettings.Networks
+      }
+    });
+    container.start();
   }
 }
