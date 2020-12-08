@@ -13,7 +13,8 @@ You can then set a Github Automation with an [Image building](https://github.com
 version: "3"
 services:
   docker-ci:
-    container_name: totodore/docker-ci:latest
+    container_name: docker-ci
+    image: totodore/docker-ci:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: always
