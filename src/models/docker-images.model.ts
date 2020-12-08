@@ -7,4 +7,10 @@ export namespace DockerImagesModel {
     platform?: string;
     "X-Registry-Auth"?: string;
   }
+
+  export interface PullImageAuth {
+    username: string;
+    password: string;
+    serveraddress: string;
+  }
 }

@@ -79,7 +79,7 @@ class App {
   private async _onUrlTriggered(id: string) {
     try {
       const containerInfos = await this._dockerManager.getContainer(id).inspect();
-      if (!await this._dockerManager.pullImage(containerInfos.Image))
+      if (!await this._dockerManager.pullImage(containerInfos.Image, containerInfos.Config.Labels))
         throw "Error Pulling Image";
       await this._dockerManager.recreateContainer(id);
     } catch (e) {
