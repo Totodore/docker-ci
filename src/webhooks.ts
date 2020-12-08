@@ -38,7 +38,7 @@ export class WebhooksManager {
   private _webhookTriggered(id: string, res: express.Response) {
     if (this._routes[id]) {
       this._routes[id]();
-      res.send(`Webhook ${id} triggered...`);
+      res.status(200).send(`Webhook ${id} triggered...`);
       this._logger.log(`${this.webhookUrl}/${id} triggered`);
     }
     else {
