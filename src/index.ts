@@ -1,5 +1,4 @@
 import { WebhooksManager } from './webhooks';
-import Dockerode = require('dockerode');
 import { DockerManager } from './docker';
 import { DockerCiLabels } from './models/docker-ci-labels.model';
 import { DockerEventsModel } from './models/docker-events.model';
@@ -21,6 +20,17 @@ class App {
     this._logger.log("Connected to docker endpoint.");
     this._logger.log("Watching container creation.");
     this._logger.log(`Listening webhooks on ${this._webhooksManager.webhookUrl}/:id`);
+    this._logger.log("Loading configuration from existing containers");
+    this.loadContainerConf();
+  }
+
+  public async loadContainerConf() {
+    const containers = await this._dockerManager.getAllContainersEnabled();
+    this._logger.log(Object.values(containers).length, "containers with webhooks detected");
+    for (const containerId in containers) {
+      this._logger.log("Adding route for container named", containers[containerId]);
+      this._addContainerConf(containers[containerId], containerId);
+    }
   }
 
   /**
@@ -63,11 +73,14 @@ class App {
    * @param id the id/name of the container to reload
    */
   private async _onUrlTriggered(id: string) {
-    const containerInfos = await this._dockerManager.getContainer(id).inspect();
-    await this._dockerManager.pullImage(containerInfos.Image);
-    await this._dockerManager.recreateContainer(id);
-    // await this._dockerManager.getContainer(id).stop()
-    // await this._dockerManager.getContainer(id)
+    try {
+      const containerInfos = await this._dockerManager.getContainer(id).inspect();
+      if (!await this._dockerManager.pullImage(containerInfos.Image))
+        throw "Error Pulling Image";
+      await this._dockerManager.recreateContainer(id);
+    } catch (e) {
+      this._logger.error("Error Pulling Image and Recreating Container", e);
+    }
   }
 
 }

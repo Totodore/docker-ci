@@ -1,3 +1,4 @@
+import { DockerCiLabels } from './models/docker-ci-labels.model';
 import { DockerEventsModel } from './models/docker-events.model';
 import * as Docker from "dockerode";
 import { Logger } from "./utils/logger";
@@ -37,6 +38,17 @@ export class DockerManager {
     return this._docker.getImage(name);
   }
 
+  public async getAllContainersEnabled(): Promise<{ [k: string]: string }> {
+    const containers = (await this._docker.listContainers());
+    const response: { [k: string]: string } = {};
+    for (const container of containers) {
+      const labels: DockerCiLabels = container.Labels;
+      if (labels["docker-ci.enable"] === "true")
+        response[container.Id] = labels["docker-ci.name"] || (await this.getContainer(container.Id).inspect()).Name;
+    }
+    return response;
+  }
+
   /**
    * Pull an image from its tag
    * @returns true in case of success
@@ -45,11 +57,11 @@ export class DockerManager {
     try {
       const imageInfos = await this.getImage(imageName).inspect();
       this._logger.log("Pulling : ", ...imageInfos.RepoTags);
-      for (const tag of imageInfos.RepoTags)
-        await this._docker.pull(tag)
+      for(const tag of imageInfos.RepoTags)
+        await this._docker.pull(tag);
       return true; 
     } catch (e) {
-      this._logger.error(e);
+      this._logger.error("Error pulling image", e);
       return false;
     }
   }
@@ -62,8 +74,11 @@ export class DockerManager {
   public async recreateContainer(containerId: string) {
     const container = this.getContainer(containerId);
     const infos = await container.inspect();
+    this._logger.log("Stopping container");
     await container.stop();
+    this._logger.log("Removing container");
     await container.remove();
-    this._docker.createContainer(infos.Config);
+    this._logger.log("Recreating container");
+    (await this._docker.createContainer(infos.Config)).start();
   }
 }
