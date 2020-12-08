@@ -92,6 +92,6 @@ export class DockerManager {
     this._logger.log("Removing container");
     await container.remove();
     this._logger.log("Recreating container");
-    (await this._docker.createContainer(infos.Config)).start();
+    (await this._docker.createContainer({ ...infos.Config, name: infos.Name })).start();
   }
 }
