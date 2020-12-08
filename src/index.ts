@@ -24,6 +24,10 @@ class App {
     this.loadContainerConf();
   }
 
+  /**
+   * Load configuration from the existing containers
+   * with the labels docker-ci.enabled=true
+   */
   public async loadContainerConf() {
     const containers = await this._dockerManager.getAllContainersEnabled();
     this._logger.log(Object.values(containers).length, "containers with webhooks detected");
@@ -46,7 +50,7 @@ class App {
       const containerInfos = await this._dockerManager.getContainer(res.Actor.ID).inspect();
       const labels: DockerCiLabels = containerInfos.Config.Labels;
       const routeId = labels["docker-ci.name"] || containerName;
-      if (labels["docker-ci.enable"]) {
+      if (labels["docker-ci.enable"] === "true") {
         this._logger.log("Docker-ci enabled, adding container to webhook conf");
         this._addContainerConf(routeId, containerInfos.Id);
       }

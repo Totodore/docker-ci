@@ -38,6 +38,11 @@ export class DockerManager {
     return this._docker.getImage(name);
   }
 
+  /**
+   * Get all docker container enableb with docker-ci.enabled
+   * Return a object where key is the id of the container and value
+   * Is the name of the webhook or the name of the container
+   */
   public async getAllContainersEnabled(): Promise<{ [k: string]: string }> {
     const containers = (await this._docker.listContainers());
     const response: { [k: string]: string } = {};
@@ -68,7 +73,6 @@ export class DockerManager {
 
   /**
    * Recreate a container from its ID
-   * TODO: Find a way to create the same container from docker-compose
    * @param containerId 
    */
   public async recreateContainer(containerId: string) {
