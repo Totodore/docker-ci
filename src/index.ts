@@ -81,7 +81,8 @@ class App {
       const containerInfos = await this._dockerManager.getContainer(id).inspect();
       if (!await this._dockerManager.pullImage(containerInfos.Image, containerInfos.Config.Labels))
         throw "Error Pulling Image";
-      await this._dockerManager.recreateContainer(id);
+      this._logger.log(containerInfos.Config.Image);
+      await this._dockerManager.recreateContainer(id, containerInfos.Image);
     } catch (e) {
       this._logger.error("Error Pulling Image and Recreating Container", e);
     }
