@@ -107,6 +107,7 @@ export class DockerManager {
     container = await this._docker.createContainer({
       ...infos.Config,
       name: infos.Name,
+      Image: infos.Image,
       NetworkingConfig: {
         EndpointsConfig: infos.NetworkSettings.Networks,
       },
