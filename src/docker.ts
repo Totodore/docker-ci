@@ -95,19 +95,19 @@ export class DockerManager {
    * Recreate a container from its ID
    * @param containerId 
    */
-  public async recreateContainer(containerId: string) {
+  public async recreateContainer(containerId: string, image: string) {
     let container: Docker.Container = this.getContainer(containerId);
     const infos = await container.inspect();
     this._logger.log("Stopping container");
     await container.stop();
     this._logger.log("Removing container");
     await container.remove();
-    this._logger.log("Recreating container");
+    this._logger.log("Recreating container with image", image);
     this._logger.log(infos.Mounts, infos.MountLabel);
     container = await this._docker.createContainer({
       ...infos.Config,
       name: infos.Name,
-      Image: infos.Image,
+      Image: image,
       NetworkingConfig: {
         EndpointsConfig: infos.NetworkSettings.Networks,
       },
