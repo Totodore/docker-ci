@@ -3,7 +3,7 @@ import { DockerEventsModel } from './models/docker-events.model';
 import { DockerImagesModel } from './models/docker-images.model';
 import * as Docker from "dockerode";
 import { Logger } from "./utils/logger";
-
+import { IncomingMessage } from "http"; 
 export class DockerManager {
   private _docker: Docker;
   private _logger = new Logger(this);
@@ -71,9 +71,20 @@ export class DockerManager {
           serveraddress: containerLabels["docker-ci.auth-server"]
         }
       }
+      let data: any[] = [];
       for(const tag of imageInfos.RepoTags)
-        await this._docker.pull(tag, authConf && { authconfig: authConf });
-      return true; 
+        data.push(await this._docker.pull(tag, authConf && { authconfig: authConf }));
+      const message: IncomingMessage = data[0];
+      message.on("data", (data) => {
+        try {
+          this._logger.log(JSON.parse(data));
+        } catch (e) {
+          this._logger.log(data.toString())
+        }
+      });
+      return new Promise<boolean>((resolve, reject) => {
+        message.on("end", () => resolve(true));
+      });
     } catch (e) {
       this._logger.error("Error pulling image", e);
       return false;
