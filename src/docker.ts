@@ -3,7 +3,7 @@ import { DockerEventsModel } from './models/docker-events.model';
 import { DockerImagesModel } from './models/docker-images.model';
 import * as Docker from "dockerode";
 import { Logger } from "./utils/logger";
-
+import { IncomingMessage } from "http"; 
 export class DockerManager {
   private _docker: Docker;
   private _logger = new Logger(this);
@@ -71,9 +71,20 @@ export class DockerManager {
           serveraddress: containerLabels["docker-ci.auth-server"]
         }
       }
+      let data: any[] = [];
       for(const tag of imageInfos.RepoTags)
-        await this._docker.pull(tag, authConf && { authconfig: authConf });
-      return true; 
+        data.push(await this._docker.pull(tag, authConf && { authconfig: authConf }));
+      const message: IncomingMessage = data[0];
+      message?.on("data", (data) => {
+        try {
+          this._logger.log(JSON.parse(data));
+        } catch (e) {
+          this._logger.log(data.toString())
+        }
+      });
+      return new Promise<boolean>((resolve, reject) => {
+        message?.on("end", () => resolve(true)) || resolve(true); 
+      });
     } catch (e) {
       this._logger.error("Error pulling image", e);
       return false;
@@ -84,18 +95,19 @@ export class DockerManager {
    * Recreate a container from its ID
    * @param containerId 
    */
-  public async recreateContainer(containerId: string) {
+  public async recreateContainer(containerId: string, image: string) {
     let container: Docker.Container = this.getContainer(containerId);
     const infos = await container.inspect();
     this._logger.log("Stopping container");
     await container.stop();
     this._logger.log("Removing container");
     await container.remove();
-    this._logger.log("Recreating container");
+    this._logger.log("Recreating container with image", image);
     this._logger.log(infos.Mounts, infos.MountLabel);
     container = await this._docker.createContainer({
       ...infos.Config,
       name: infos.Name,
+      Image: image,
       NetworkingConfig: {
         EndpointsConfig: infos.NetworkSettings.Networks,
       },
