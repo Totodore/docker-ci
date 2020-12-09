@@ -75,7 +75,7 @@ export class DockerManager {
       for(const tag of imageInfos.RepoTags)
         data.push(await this._docker.pull(tag, authConf && { authconfig: authConf }));
       const message: IncomingMessage = data[0];
-      message.on("data", (data) => {
+      message?.on("data", (data) => {
         try {
           this._logger.log(JSON.parse(data));
         } catch (e) {
@@ -83,7 +83,7 @@ export class DockerManager {
         }
       });
       return new Promise<boolean>((resolve, reject) => {
-        message.on("end", () => resolve(true));
+        message?.on("end", () => resolve(true)) || resolve(true); 
       });
     } catch (e) {
       this._logger.error("Error pulling image", e);
