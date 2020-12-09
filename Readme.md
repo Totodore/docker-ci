@@ -42,6 +42,7 @@ services:
       - "5050:80"
     environment:
       - PORT=80
+      - VERBOSE=true #Print logs
       - NODE_ENV=production
 ```
 ### docker-compose.yml of application Docker-CI (example of App with a Continuous integration workflow) :

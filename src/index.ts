@@ -21,6 +21,7 @@ class App {
     this._logger.log("Watching container creation.");
     this._logger.log(`Listening webhooks on ${this._webhooksManager.webhookUrl}/:id`);
     this._logger.log("Loading configuration from existing containers");
+    this._logger.info("Docker-CI started");
     this.loadContainerConf();
   }
 
@@ -32,7 +33,7 @@ class App {
     const containers = await this._dockerManager.getAllContainersEnabled();
     this._logger.log(Object.values(containers).length, "containers with webhooks detected");
     for (const containerId in containers) {
-      this._logger.log("Adding route for container named", containers[containerId]);
+      this._logger.info("Adding route for container named", containers[containerId]);
       this._addContainerConf(containers[containerId], containerId);
     }
   }
@@ -68,12 +69,15 @@ class App {
    * @param id 
    */
   private async _addContainerConf(routeId: string, id: string) {
-    this._logger.log(`New webhook available at : ${this._webhooksManager.webhookUrl}/${routeId}`);
+    this._logger.info(`New webhook available at : ${this._webhooksManager.webhookUrl}/${routeId}`);
     this._webhooksManager.addRoute(routeId, () => this._onUrlTriggered(id));
   }
 
   /**
    * Triggered when someone call the url 
+   * -Pull an image
+   * -Recreate the container
+   * -Prune images
    * @param id the id/name of the container to reload
    */
   private async _onUrlTriggered(id: string) {
@@ -85,6 +89,11 @@ class App {
       await this._dockerManager.recreateContainer(id, containerInfos.Image);
     } catch (e) {
       this._logger.error("Error Pulling Image and Recreating Container", e);
+    }
+    try {
+      this._dockerManager.pruneImages();
+    } catch (e) {
+      this._logger.error("Error removing unused images", e);
     }
   }
 
