@@ -55,6 +55,10 @@ export class DockerManager {
     return response;
   }
 
+  public async pruneImages(): Promise<void> {
+    await this._docker.pruneImages();
+  }
+
   /**
    * Pull an image from its tag
    * @returns true in case of success
@@ -62,7 +66,7 @@ export class DockerManager {
   public async pullImage(imageName: string, containerLabels: DockerCiLabels): Promise<boolean> {
     try {
       const imageInfos = await this.getImage(imageName).inspect();
-      this._logger.log("Pulling : ", ...imageInfos.RepoTags);
+      this._logger.info("Pulling : ", ...imageInfos.RepoTags);
       let authConf: DockerImagesModel.PullImageAuth | undefined;
       if (containerLabels["docker-ci.username"] && containerLabels["docker-ci.password"] && containerLabels["docker-ci.auth-server"]) {
         authConf = {
@@ -96,25 +100,35 @@ export class DockerManager {
    * @param containerId 
    */
   public async recreateContainer(containerId: string, image: string) {
-    let container: Docker.Container = this.getContainer(containerId);
-    const infos = await container.inspect();
+    let oldContainer: Docker.Container = this.getContainer(containerId);
+    const oldImageInfo = await this._docker.getImage(image).inspect();
+    const oldContainerInfo = await oldContainer.inspect();
+
     this._logger.log("Stopping container");
-    await container.stop();
+    await oldContainer.stop();
+
     this._logger.log("Removing container");
-    await container.remove();
-    this._logger.log("Recreating container with image", image);
-    this._logger.log(infos.Mounts, infos.MountLabel);
-    container = await this._docker.createContainer({
-      ...infos.Config,
-      name: infos.Name,
-      Image: image,
+    await oldContainer.remove();
+
+    const allImages = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0).filter(allImageEl =>
+      allImageEl.RepoTags.some(el => oldImageInfo.RepoTags.includes(el)));
+    
+    this._logger.log("Available images for this container : ", allImages)
+    const newImage = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0)[0];
+    this._logger.log("Recreating container with image :", newImage.RepoTags, newImage.RepoDigests);
+
+    const newContainer = await this._docker.createContainer({
+      ...oldContainerInfo.Config,
+      name: oldContainerInfo.Name,
+      Image: newImage.RepoTags[0],
       NetworkingConfig: {
-        EndpointsConfig: infos.NetworkSettings.Networks,
+        EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
       },
       HostConfig: {
-        Binds: infos.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
+        Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
       },
     });
-    container.start();
+    newContainer.start();
+    this._logger.info(`Container ${oldContainerInfo.Name} recreated and updated !`);
   }
 }

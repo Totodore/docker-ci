@@ -16,7 +16,7 @@ export class WebhooksManager {
 
     return new Promise<void>((resolve) => this._app.listen(process.env.PORT ?? 3000, () => resolve())).catch(e => {
       this._logger.error(e);
-      this._logger.log("Error detected, stopping application...");
+      this._logger.error("Error detected, stopping application...");
       process.exit(1);
     });
   }
@@ -39,10 +39,10 @@ export class WebhooksManager {
     if (this._routes[id]) {
       this._routes[id]();
       res.status(200).send(`Webhook ${id} triggered...`);
-      this._logger.log(`${this.webhookUrl}/${id} triggered`);
+      this._logger.info(`${this.webhookUrl}/${id} triggered`);
     }
     else {
-      this._logger.log(`Unknown id route triggered : ${id}`);
+      this._logger.error(`Unknown id route triggered : ${id}`);
       res.status(400).send(`Unknown '${id}' webhook triggered...`);
     }
   }
