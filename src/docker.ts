@@ -97,7 +97,8 @@ export class DockerManager {
       name: infos.Name,
       NetworkingConfig: {
         EndpointsConfig: infos.NetworkSettings.Networks
-      }
+      },
+      Volumes: infos.Config.Volumes
     });
     container.start();
   }
