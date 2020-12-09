@@ -3,6 +3,8 @@ services:
   app:
     image: "httpd"
     container_name: httpd
+    volumes: 
+      - "data:/data"
     networks: 
       - "web"
     labels: 
@@ -12,3 +14,6 @@ services:
 networks: 
   web:
     external: true
+
+volumes: 
+  data:

@@ -92,13 +92,16 @@ export class DockerManager {
     this._logger.log("Removing container");
     await container.remove();
     this._logger.log("Recreating container");
+    this._logger.log(infos.Mounts, infos.MountLabel);
     container = await this._docker.createContainer({
       ...infos.Config,
       name: infos.Name,
       NetworkingConfig: {
-        EndpointsConfig: infos.NetworkSettings.Networks
+        EndpointsConfig: infos.NetworkSettings.Networks,
       },
-      Volumes: infos.Config.Volumes
+      HostConfig: {
+        Binds: infos.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
+      },
     });
     container.start();
   }
