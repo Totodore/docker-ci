@@ -3,7 +3,7 @@ import { DockerManager } from './docker';
 import { DockerCiLabels } from './models/docker-ci-labels.model';
 import { DockerEventsModel } from './models/docker-events.model';
 import { Logger } from './utils/logger';
-
+import * as dotenv from "dotenv";
 class App {
 
   private readonly _logger = new Logger(this);
@@ -99,4 +99,5 @@ class App {
 
 }
 
+dotenv.config();
 new App().init();

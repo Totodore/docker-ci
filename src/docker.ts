@@ -110,11 +110,13 @@ export class DockerManager {
     this._logger.log("Removing container");
     await oldContainer.remove();
 
-    const allImages = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0).filter(allImageEl =>
-      allImageEl.RepoTags.some(el => oldImageInfo.RepoTags.includes(el)));
+    let newImage: Docker.ImageInfo;
+    for (const img of await this._docker.listImages()) {
+      if (img.RepoTags?.includes(oldImageInfo.RepoTags[0]) && (img.Created > newImage?.Created || !newImage))
+        newImage = img;
+    }
     
-    this._logger.log("Available images for this container : ", allImages)
-    const newImage = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0)[0];
+    // this._logger.log("Available images for this container : ", (await this._docker.listImages()));
     this._logger.log("Recreating container with image :", newImage.RepoTags, newImage.RepoDigests);
 
     const newContainer = await this._docker.createContainer({
