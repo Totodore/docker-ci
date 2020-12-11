@@ -118,19 +118,23 @@ export class DockerManager {
     
     // this._logger.log("Available images for this container : ", (await this._docker.listImages()));
     this._logger.log("Recreating container with image :", newImage.RepoTags, newImage.RepoDigests);
-
-    const newContainer = await this._docker.createContainer({
-      ...oldContainerInfo.Config,
-      name: oldContainerInfo.Name,
-      Image: newImage.RepoTags[0],
-      NetworkingConfig: {
-        EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
-      },
-      HostConfig: {
-        Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
-      },
+    
+    await new Promise<void>((resolve, reject) => {
+      setTimeout(async () => {
+        (await this._docker.createContainer({
+          ...oldContainerInfo.Config,
+          name: oldContainerInfo.Name,
+          Image: newImage.RepoTags[0],
+          NetworkingConfig: {
+            EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
+          },
+          HostConfig: {
+            Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
+          },
+        })).start();
+        resolve();
+      }, 3000);
     });
-    newContainer.start();
     this._logger.info(`Container ${oldContainerInfo.Name} recreated and updated !`);
   }
 }
