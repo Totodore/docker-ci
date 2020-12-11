@@ -13,6 +13,7 @@ This is the default configuration, you just have to add docker-ci.enable in your
 |Name|Type|Description|
 |----|----|-----------|
 | ```docker-ci.enable```|```boolean```|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
+| ```docker-ci.repo-url```|```string```|Url of the image repository (same as what you put in image:)|
 | ```docker-ci.name```|```string (Optional)```|Set a custom name for the endpoint, by default it is the name of the container|
 
 
@@ -58,6 +59,7 @@ services:
     restart: always
     labels:
       - "docker-ci.enabled=true"
+      - "docker-ci.repo-url=ghcr.io/totodore/automate:latest"
       - "docker-ci.name=automate" #This argument is optional by default it is the name of the container (container_name)
       # The following is only if you use auth to get private package
       - "docker-ci.password=MyPasswordOrToken" #Registry Password or token 
@@ -128,6 +130,7 @@ jobs:
 |Name|Type|Description|
 |----|----|-----------|
 | ```docker-ci.enable```|```boolean```|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
+| ```docker-ci.repo-url```|```string```|Url of the image repo|
 | ```docker-ci.name```|```string (Optional)```|Set a custom name for the endpoint, by default it is the name of the container|
 | ```docker-ci.username```|```string (Optional)```|Set a username for the docker package registry auth|
 | ```docker-ci.password```|```string (Optional)```|Set a password or a token for the docker package registry auth|
