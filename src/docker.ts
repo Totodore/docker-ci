@@ -101,7 +101,6 @@ export class DockerManager {
    */
   public async recreateContainer(containerId: string, image: string) {
     let oldContainer: Docker.Container = this.getContainer(containerId);
-    const oldImageInfo = await this._docker.getImage(image).inspect();
     const oldContainerInfo = await oldContainer.inspect();
 
     this._logger.log("Stopping container");
@@ -109,15 +108,8 @@ export class DockerManager {
 
     this._logger.log("Removing container");
     await oldContainer.remove();
-
-    let newImage: Docker.ImageInfo;
-    for (const img of await this._docker.listImages()) {
-      if (img.RepoTags?.includes(oldImageInfo.RepoTags[0]) && (img.Created > newImage?.Created || !newImage))
-        newImage = img;
-    }
-    
     // this._logger.log("Available images for this container : ", (await this._docker.listImages()));
-    this._logger.log("Recreating container with image :", newImage.RepoTags, newImage.RepoDigests);
+    this._logger.log("Recreating container with image :", oldContainerInfo.Config.Labels["docker-ci.repo-url"]);
     
     await new Promise<void>((resolve, reject) => {
       setTimeout(async () => {
