@@ -124,7 +124,7 @@ export class DockerManager {
         (await this._docker.createContainer({
           ...oldContainerInfo.Config,
           name: oldContainerInfo.Name,
-          Image: newImage.RepoTags[0],
+          Image: oldContainerInfo.Config.Labels["docker-ci.repo-url"],
           NetworkingConfig: {
             EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
           },
