@@ -5,7 +5,7 @@ Docker-CI is a little program which allow you to implement easy continuous integ
 Docker-CI watch for container creations, it means that you don't have to restart Docker-CI whenever you update a container configuration.
 
 Docker-CI will then create a route corresponding to this pattern : ```http(s)://0.0.0.0[:port]/deploy/:appName``` where the appName correspond to the name you gave to your container or to the name you gave through the option ```docker-ci.name```
-You can then set a Github Automation with an [Image building](https://github.com/actions/starter-workflows/blob/a571f2981ab5a22dfd9158f20646c2358db3654c/ci/docker-publish.yml) and you can then add a webhook to trigger the above url when the image is built and stored in the Github Package Registry
+You can then set a Github Automation with an [Image building](https://github.com/actions/starter-workflows/blob/a571f2981ab5a22dfd9158f20646c2358db3654c/ci/docker-publish.yml) and you can then add a webhook to trigger the above url when the image is built and stored in the Github Package Registry or any other repository (e.g : Docker hub)
 
 ## Base configuration :
 This is the default configuration, you just have to add docker-ci.enable in your docker-compose.yml :
