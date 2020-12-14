@@ -35,7 +35,7 @@ version: "3"
 services:
   docker-ci:
     container_name: docker-ci
-    image: totodore/docker-ci:latest
+    image: theodoreprevot/docker-ci:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: always
