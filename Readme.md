@@ -69,7 +69,7 @@ services:
 
 ### docker-publish in the github repo :
 ```yaml
-name: Docker
+name: Docker 
 
 on:
   push:
