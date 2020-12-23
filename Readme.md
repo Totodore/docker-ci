@@ -1,6 +1,6 @@
 # Docker-CI
 
-Docker-CI is a little program which allow you to implement easy continuous integration through Github Workflows and docker-compose. It uses labels to set the different options to enable Docker-ci for each container.
+Docker-CI is a little program which allow you to implement easy continuous integration through Github Workflows and docker-compose. It uses labels to set the different options to enable Docker-ci for each container. 
 
 Docker-CI watch for container creations, it means that you don't have to restart Docker-CI whenever you update a container configuration.
 
