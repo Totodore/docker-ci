@@ -115,7 +115,7 @@ jobs:
           echo VERSION=$VERSION
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
-  deploy:
+  deploy: 
     needs: push
     name: deploy
     runs-on: ubuntu-18.04
