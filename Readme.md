@@ -43,6 +43,7 @@ In case your package is private, you can specify credentials in your config :
 ## Mailing
 If you want to be notified when an error occurs when the container is redeployed you can add a mail
 |Name|Type|Description|
+|----|----|-----------|
 |`docker-ci.email`|`string (Optional)`|Set a specific user email to be notified only for this user when an error occurs|
 
 ## Example
