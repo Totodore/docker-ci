@@ -23,8 +23,9 @@ class MailerManager {
     return this;
   }
   
-  public sendErrorMail(container: string, mailDest: string, ...error: any[]) {
-    this._transporter.sendMail({
+  public async sendErrorMail(container: string, mailDest: string, ...error: any[]) {
+    this._logger.log("Envoi des emails d'erreur à :", mailDest, process.env.MAIL_DEST);
+    await this._transporter.sendMail({
       from: process.env.MAIL_ADDR,
       to: process.env.MAIL_DEST,
       subject: `Erreur lors du déploiement de : ${container}`,
@@ -33,12 +34,14 @@ class MailerManager {
         <p>${error.join(" ")}</p>
       `
     }).catch(e => this._logger.info("Error sending error mail"));
-    this._transporter.sendMail({
-      from: process.env.MAIL_ADDR,
-      to: process.env.MAIL_DEST,
-      subject: `Erreur lors du déploiement de : ${container}`,
-      html: "Les administrateurs de ce serveur ont été notifiés",
-    }).catch(e => this._logger.info("Error sending error mail"));
+    if (mailDest) {
+      await this._transporter.sendMail({
+        from: process.env.MAIL_ADDR,
+        to: mailDest,
+        subject: `Erreur lors du déploiement de : ${container}`,
+        html: "Les administrateurs de ce serveur ont été notifiés",
+      }).catch(e => this._logger.info("Error sending error mail"));
+    }
   }
 }
 

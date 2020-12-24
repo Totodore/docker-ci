@@ -114,18 +114,23 @@ export class DockerManager {
       
       await new Promise<void>((resolve, reject) => {
         setTimeout(async () => {
-          (await this._docker.createContainer({
-            ...oldContainerInfo.Config,
-            name: oldContainerInfo.Name,
-            Image: oldContainerInfo.Config.Labels["docker-ci.repo-url"],
-            NetworkingConfig: {
-              EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
-            },
-            HostConfig: {
-              Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
-            },
-          })).start();
-          resolve();
+          try {
+            const container = await this._docker.createContainer({
+              ...oldContainerInfo.Config,
+              name: oldContainerInfo.Name,
+              Image: oldContainerInfo.Config.Labels["docker-ci.repo-url"],
+              NetworkingConfig: {
+                EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
+              },
+              HostConfig: {
+                Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
+              },
+            });
+            container.start();
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
         }, 3000);
       });
       this._logger.info(`Container ${oldContainerInfo.Name} recreated and updated !`);

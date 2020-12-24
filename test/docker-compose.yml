@@ -10,8 +10,7 @@ services:
     labels: 
       docker-ci.enable: 'true'
       docker-ci.name: hello-world
-      docker-ci.url: ghcr.io/clementdelestre/soundbox
-      docker-ci.email: prevottheodore@gmail.com
+      docker-ci.repo-url: ghcr.io/clementdelestre/
       
 
 networks: 

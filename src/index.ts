@@ -22,7 +22,7 @@ class App {
       await this._mailer.init();
     
     this._dockerManager.addContainerEventListener("start", (res) => this._onCreateContainer(res));
-
+    this._dockerManager.addContainerEventListener("destroy", (res) => this._onRemovedContainer(res));
     this._logger.log("Connected to docker endpoint.");
     this._logger.log("Watching container creation.");
     this._logger.log(`Listening webhooks on ${this._webhooksManager.webhookUrl}/:id`);
@@ -69,8 +69,15 @@ class App {
     }
   }
 
+  private async _onRemovedContainer(res: DockerEventsModel.EventResponse) {
+    const containerId = res.Actor.ID;
+    const containerInfos = await this._dockerManager.getContainer(containerId).inspect();
+    const labels: DockerCiLabels = containerInfos.Config.Labels;
+    this._webhooksManager.removeRoute(labels['docker-ci.repo-url'] ?? containerInfos.Name);
+  }
+
   /**
-   * Add the route to wenhooks
+   * Add the route to webhooks
    * @param routeId 
    * @param id 
    */
@@ -94,8 +101,7 @@ class App {
         throw "Error Pulling Image";
       await this._dockerManager.recreateContainer(id, containerInfos.Image);
     } catch (e) {
-      this._logger.error("Error Pulling Image or Recreating Container", e);
-      this._sendErrorMail(id, e);
+      this._sendErrorMail(containerInfos, e?.stack ?? e);
     }
     try {
       this._dockerManager.pruneImages();
@@ -104,14 +110,13 @@ class App {
     }
   }
 
-  private async _sendErrorMail(containerId: string, error: string) {
+  private async _sendErrorMail(infos: ContainerInspectInfo, error: string) {
     try {
-      const infos = await this._dockerManager.getContainer(containerId).inspect();
-      const labels: DockerCiLabels = infos.Config.Labels;
+      const labels: DockerCiLabels = infos?.Config?.Labels;
       if (labels['docker-ci.email']?.includes("@"))
-        this._mailer.sendErrorMail(infos.Name, labels["docker-ci.email"], error);
+        this._mailer.sendErrorMail(infos?.Name, labels?.["docker-ci.email"], error);
       else
-        this._mailer.sendErrorMail(infos.Name, null, error);
+        this._mailer.sendErrorMail(infos?.Name, null, error);
     } catch (e) {
       this._logger.error(e);
     }
