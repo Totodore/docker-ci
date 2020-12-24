@@ -100,39 +100,44 @@ export class DockerManager {
    * @param containerId 
    */
   public async recreateContainer(containerId: string, image: string) {
-    let oldContainer: Docker.Container = this.getContainer(containerId);
-    const oldImageInfo = await this._docker.getImage(image).inspect();
-    const oldContainerInfo = await oldContainer.inspect();
-
-    this._logger.log("Stopping container");
-    await oldContainer.stop();
-
-    this._logger.log("Removing container");
-    await oldContainer.remove();
-
-    const allImages = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0).filter(allImageEl =>
-      allImageEl.RepoTags.some(el => oldImageInfo.RepoTags.includes(el)));
-    
-    this._logger.log("Available images for this container : ", allImages)
-    const newImage = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0)[0];
-    this._logger.log("Recreating container with image :", newImage.RepoTags, newImage.RepoDigests);
-    
-    await new Promise<void>((resolve, reject) => {
-      setTimeout(async () => {
-        (await this._docker.createContainer({
-          ...oldContainerInfo.Config,
-          name: oldContainerInfo.Name,
-          Image: newImage.RepoTags[0],
-          NetworkingConfig: {
-            EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
-          },
-          HostConfig: {
-            Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
-          },
-        })).start();
-        resolve();
-      }, 3000);
-    });
-    this._logger.info(`Container ${oldContainerInfo.Name} recreated and updated !`);
+    try {
+      let oldContainer: Docker.Container = this.getContainer(containerId);
+      const oldImageInfo = await this._docker.getImage(image).inspect();
+      const oldContainerInfo = await oldContainer.inspect();
+  
+      this._logger.log("Stopping container");
+      await oldContainer.stop().catch();
+  
+      this._logger.log("Removing container");
+      await oldContainer.remove({ force: true });
+  
+      const allImages = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0).filter(allImageEl =>
+        allImageEl.RepoTags.some(el => oldImageInfo.RepoTags.includes(el)));
+      
+      this._logger.log("Available images for this container : ", allImages)
+      const newImage = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0)[0];
+      this._logger.log("Recreating container with image :", newImage.RepoTags, newImage.RepoDigests);
+      
+      await new Promise<void>((resolve, reject) => {
+        setTimeout(async () => {
+          (await this._docker.createContainer({
+            ...oldContainerInfo.Config,
+            name: oldContainerInfo.Name,
+            Image: newImage.RepoTags[0],
+            NetworkingConfig: {
+              EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
+            },
+            HostConfig: {
+              Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
+            },
+          })).start();
+          resolve();
+        }, 3000);
+      });
+      this._logger.info(`Container ${oldContainerInfo.Name} recreated and updated !`);
+    } catch (e) {
+      this._logger.error("Error recreating container :", e);
+      throw new Error("Error recreating container : \n" + e);
+    }
   }
 }

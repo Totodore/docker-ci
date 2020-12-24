@@ -3,18 +3,24 @@ import { DockerManager } from './docker';
 import { DockerCiLabels } from './models/docker-ci-labels.model';
 import { DockerEventsModel } from './models/docker-events.model';
 import { Logger } from './utils/logger';
+import { MailerManager } from './utils/mailer';
+import * as dotenv from "dotenv";
+import { ContainerInspectInfo } from 'dockerode';
 
 class App {
 
   private readonly _logger = new Logger(this);
   private _dockerManager = new DockerManager();
   private _webhooksManager = new WebhooksManager();
+  private _mailer = new MailerManager();
 
   public async init() {
     this._logger.log("Connecting to docker endpoint");
     await this._dockerManager.init();
     await this._webhooksManager.init();
-
+    if (process.env.MAILING)
+      await this._mailer.init();
+    
     this._dockerManager.addContainerEventListener("start", (res) => this._onCreateContainer(res));
 
     this._logger.log("Connected to docker endpoint.");
@@ -81,14 +87,15 @@ class App {
    * @param id the id/name of the container to reload
    */
   private async _onUrlTriggered(id: string) {
+    let containerInfos: ContainerInspectInfo;
     try {
-      const containerInfos = await this._dockerManager.getContainer(id).inspect();
+      containerInfos = await this._dockerManager.getContainer(id).inspect();
       if (!await this._dockerManager.pullImage(containerInfos.Image, containerInfos.Config.Labels))
         throw "Error Pulling Image";
-      this._logger.log(containerInfos.Config.Image);
       await this._dockerManager.recreateContainer(id, containerInfos.Image);
     } catch (e) {
-      this._logger.error("Error Pulling Image and Recreating Container", e);
+      this._logger.error("Error Pulling Image or Recreating Container", e);
+      this._sendErrorMail(id, e);
     }
     try {
       this._dockerManager.pruneImages();
@@ -97,6 +104,19 @@ class App {
     }
   }
 
+  private async _sendErrorMail(containerId: string, error: string) {
+    try {
+      const infos = await this._dockerManager.getContainer(containerId).inspect();
+      const labels: DockerCiLabels = infos.Config.Labels;
+      if (labels['docker-ci.email']?.includes("@"))
+        this._mailer.sendErrorMail(infos.Name, labels["docker-ci.email"], error);
+      else
+        this._mailer.sendErrorMail(infos.Name, null, error);
+    } catch (e) {
+      this._logger.error(e);
+    }
+  }
 }
 
+dotenv.config();
 new App().init();

@@ -1,15 +1,18 @@
 version: "3"
 services: 
   app:
-    image: "httpd"
-    container_name: httpd
+    image: "ghcr.io/clementdelestre/soundbox"
+    container_name: soundbox
     volumes: 
       - "data:/data"
     networks: 
       - "web"
     labels: 
-      - "docker-ci.enable=true"
-      - "docker-ci.name=hello-world"
+      docker-ci.enable: 'true'
+      docker-ci.name: hello-world
+      docker-ci.url: ghcr.io/clementdelestre/soundbox
+      docker-ci.email: prevottheodore@gmail.com
+      
 
 networks: 
   web:
