@@ -12,7 +12,7 @@ export class WebhooksManager {
   public async init() {
     this._app.use(this._router);
 
-    this._router.get(`${this.routePath}/:id`, (req: express.Request, res: express.Response) => this._webhookTriggered(req.params.id, res));
+    this._router.all(`${this.routePath}/:id`, (req: express.Request, res: express.Response) => this._webhookTriggered(req.params.id, res));
 
     return new Promise<void>((resolve) => this._app.listen(process.env.PORT ?? 3000, () => resolve())).catch(e => {
       this._logger.error(e);
