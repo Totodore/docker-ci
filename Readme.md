@@ -13,13 +13,13 @@ Docker-CI can notify you by email in case of error, you can set an admin mail an
 You can specify different Env Var to the docker-ci to configure it as you want
 |Name|Default|Description|
 |----|----|-----------|
-|`VERBOSE`|`false`|`Print all logs to the docker stdout`|
-|`PORT`|`3000`|`The port for the webhook server`|
-|`MAILING`|`false`|`Enable mailing in case of error`|
-|`MAIL_HOST`||`Mail server addr`|
-|`MAIL_ADDR`||`Email addr for the server`|
-|`MAIL_PWD`||`Password of the email addr`|
-|`MAIL_DEST`||`Emails destinations for the errors`|
+|`VERBOSE`|`false`|Print all logs to the docker stdout|
+|`PORT`|`3000`|The port for the webhook server|
+|`MAILING`|`false`|Enable mailing in case of error|
+|`MAIL_HOST`||Mail server addr|
+|`MAIL_ADDR`||Email addr for the server|
+|`MAIL_PWD`||Password of the email addr|
+|`MAIL_DEST`||Emails destinations for the errors|
 
 ## Base configuration :
 This is the default configuration, you just have to add docker-ci.enable in your docker-compose.yml :
