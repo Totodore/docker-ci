@@ -102,28 +102,22 @@ export class DockerManager {
   public async recreateContainer(containerId: string, image: string) {
     try {
       let oldContainer: Docker.Container = this.getContainer(containerId);
-      const oldImageInfo = await this._docker.getImage(image).inspect();
       const oldContainerInfo = await oldContainer.inspect();
-  
+
       this._logger.log("Stopping container");
       await oldContainer.stop().catch();
-  
+
       this._logger.log("Removing container");
       await oldContainer.remove({ force: true });
-  
-      const allImages = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0).filter(allImageEl =>
-        allImageEl.RepoTags.some(el => oldImageInfo.RepoTags.includes(el)));
-      
-      this._logger.log("Available images for this container : ", allImages)
-      const newImage = (await this._docker.listImages()).filter(el => el.RepoTags?.length > 0)[0];
-      this._logger.log("Recreating container with image :", newImage.RepoTags, newImage.RepoDigests);
+      // this._logger.log("Available images for this container : ", (await this._docker.listImages()));
+      this._logger.log("Recreating container with image :", oldContainerInfo.Config.Labels["docker-ci.repo-url"]);
       
       await new Promise<void>((resolve, reject) => {
         setTimeout(async () => {
           (await this._docker.createContainer({
             ...oldContainerInfo.Config,
             name: oldContainerInfo.Name,
-            Image: newImage.RepoTags[0],
+            Image: oldContainerInfo.Config.Labels["docker-ci.repo-url"],
             NetworkingConfig: {
               EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
             },

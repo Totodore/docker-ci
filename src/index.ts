@@ -57,7 +57,7 @@ class App {
       const containerInfos = await this._dockerManager.getContainer(res.Actor.ID).inspect();
       const labels: DockerCiLabels = containerInfos.Config.Labels;
       const routeId = labels["docker-ci.name"] || containerName.replace("/", "");
-      if (labels["docker-ci.enable"] === "true") {
+      if (labels["docker-ci.enable"] === "true" && labels["docker-ci.repo-url"]) {
         this._logger.log("Docker-ci enabled, adding container to webhook conf");
         this._addContainerConf(routeId, containerInfos.Id);
       }

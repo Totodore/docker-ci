@@ -1,11 +1,11 @@
 # Docker-CI
 
-Docker-CI is a little program which allow you to implement easy continuous integration through Github Workflows and docker-compose. It uses labels to set the different options to enable Docker-ci for each container.
+Docker-CI is a little program which allow you to implement easy continuous integration through Github Workflows and docker-compose. It uses labels to set the different options to enable Docker-ci for each container. 
 
 Docker-CI watch for container creations, it means that you don't have to restart Docker-CI whenever you update a container configuration.
 
 Docker-CI will then create a route corresponding to this pattern : ```http(s)://0.0.0.0[:port]/deploy/:appName``` where the appName correspond to the name you gave to your container or to the name you gave through the option ```docker-ci.name```
-You can then set a Github Automation with an [Image building](https://github.com/actions/starter-workflows/blob/a571f2981ab5a22dfd9158f20646c2358db3654c/ci/docker-publish.yml) and you can then add a webhook to trigger the above url when the image is built and stored in the Github Package Registry
+You can then set a Github Automation with an [Image building](https://github.com/actions/starter-workflows/blob/a571f2981ab5a22dfd9158f20646c2358db3654c/ci/docker-publish.yml) and you can then add a webhook to trigger the above url when the image is built and stored in the Github Package Registry or any other repository (e.g : Docker hub)
 
 ## Base configuration :
 This is the default configuration, you just have to add docker-ci.enable in your docker-compose.yml :
@@ -13,6 +13,7 @@ This is the default configuration, you just have to add docker-ci.enable in your
 |Name|Type|Description|
 |----|----|-----------|
 | ```docker-ci.enable```|```boolean```|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
+| ```docker-ci.repo-url```|```string```|Url of the image repository (same as what you put in image:)|
 | ```docker-ci.name```|```string (Optional)```|Set a custom name for the endpoint, by default it is the name of the container|
 
 
@@ -34,7 +35,7 @@ version: "3"
 services:
   docker-ci:
     container_name: docker-ci
-    image: totodore/docker-ci:latest
+    image: theodoreprevot/docker-ci:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: always
@@ -58,6 +59,7 @@ services:
     restart: always
     labels:
       - "docker-ci.enabled=true"
+      - "docker-ci.repo-url=ghcr.io/totodore/automate:latest"
       - "docker-ci.name=automate" #This argument is optional by default it is the name of the container (container_name)
       # The following is only if you use auth to get private package
       - "docker-ci.password=MyPasswordOrToken" #Registry Password or token 
@@ -67,7 +69,7 @@ services:
 
 ### docker-publish in the github repo :
 ```yaml
-name: Docker
+name: Docker 
 
 on:
   push:
@@ -113,7 +115,7 @@ jobs:
           echo VERSION=$VERSION
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
-  deploy:
+  deploy: 
     needs: push
     name: deploy
     runs-on: ubuntu-18.04
@@ -128,6 +130,7 @@ jobs:
 |Name|Type|Description|
 |----|----|-----------|
 | ```docker-ci.enable```|```boolean```|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
+| ```docker-ci.repo-url```|```string```|Url of the image repo|
 | ```docker-ci.name```|```string (Optional)```|Set a custom name for the endpoint, by default it is the name of the container|
 | ```docker-ci.username```|```string (Optional)```|Set a username for the docker package registry auth|
 | ```docker-ci.password```|```string (Optional)```|Set a password or a token for the docker package registry auth|
