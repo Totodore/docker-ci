@@ -100,33 +100,43 @@ export class DockerManager {
    * @param containerId 
    */
   public async recreateContainer(containerId: string, image: string) {
-    let oldContainer: Docker.Container = this.getContainer(containerId);
-    const oldContainerInfo = await oldContainer.inspect();
+    try {
+      let oldContainer: Docker.Container = this.getContainer(containerId);
+      const oldContainerInfo = await oldContainer.inspect();
 
-    this._logger.log("Stopping container");
-    await oldContainer.stop();
+      this._logger.log("Stopping container");
+      await oldContainer.stop().catch();
 
-    this._logger.log("Removing container");
-    await oldContainer.remove();
-    // this._logger.log("Available images for this container : ", (await this._docker.listImages()));
-    this._logger.log("Recreating container with image :", oldContainerInfo.Config.Labels["docker-ci.repo-url"]);
-    
-    await new Promise<void>((resolve, reject) => {
-      setTimeout(async () => {
-        (await this._docker.createContainer({
-          ...oldContainerInfo.Config,
-          name: oldContainerInfo.Name,
-          Image: oldContainerInfo.Config.Labels["docker-ci.repo-url"],
-          NetworkingConfig: {
-            EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
-          },
-          HostConfig: {
-            Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
-          },
-        })).start();
-        resolve();
-      }, 3000);
-    });
-    this._logger.info(`Container ${oldContainerInfo.Name} recreated and updated !`);
+      this._logger.log("Removing container");
+      await oldContainer.remove({ force: true });
+      // this._logger.log("Available images for this container : ", (await this._docker.listImages()));
+      this._logger.log("Recreating container with image :", oldContainerInfo.Config.Labels["docker-ci.repo-url"]);
+      
+      await new Promise<void>((resolve, reject) => {
+        setTimeout(async () => {
+          try {
+            const container = await this._docker.createContainer({
+              ...oldContainerInfo.Config,
+              name: oldContainerInfo.Name,
+              Image: oldContainerInfo.Config.Labels["docker-ci.repo-url"],
+              NetworkingConfig: {
+                EndpointsConfig: oldContainerInfo.NetworkSettings.Networks,
+              },
+              HostConfig: {
+                Binds: oldContainerInfo.Mounts.map(el => `${el.Name}:${el.Destination}:${el.Mode}`)  //Binding volumes mountpoints in case of named volumes
+              },
+            });
+            container.start();
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        }, 3000);
+      });
+      this._logger.info(`Container ${oldContainerInfo.Name} recreated and updated !`);
+    } catch (e) {
+      this._logger.error("Error recreating container :", e);
+      throw new Error("Error recreating container : \n" + e);
+    }
   }
 }

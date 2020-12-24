@@ -3,20 +3,26 @@ import { DockerManager } from './docker';
 import { DockerCiLabels } from './models/docker-ci-labels.model';
 import { DockerEventsModel } from './models/docker-events.model';
 import { Logger } from './utils/logger';
+import { MailerManager } from './utils/mailer';
 import * as dotenv from "dotenv";
+import { ContainerInspectInfo } from 'dockerode';
+
 class App {
 
   private readonly _logger = new Logger(this);
   private _dockerManager = new DockerManager();
   private _webhooksManager = new WebhooksManager();
+  private _mailer = new MailerManager();
 
   public async init() {
     this._logger.log("Connecting to docker endpoint");
     await this._dockerManager.init();
     await this._webhooksManager.init();
-
+    if (process.env.MAILING)
+      await this._mailer.init();
+    
     this._dockerManager.addContainerEventListener("start", (res) => this._onCreateContainer(res));
-
+    this._dockerManager.addContainerEventListener("destroy", (res) => this._onRemovedContainer(res));
     this._logger.log("Connected to docker endpoint.");
     this._logger.log("Watching container creation.");
     this._logger.log(`Listening webhooks on ${this._webhooksManager.webhookUrl}/:id`);
@@ -63,8 +69,15 @@ class App {
     }
   }
 
+  private async _onRemovedContainer(res: DockerEventsModel.EventResponse) {
+    const containerId = res.Actor.ID;
+    const containerInfos = await this._dockerManager.getContainer(containerId).inspect();
+    const labels: DockerCiLabels = containerInfos.Config.Labels;
+    this._webhooksManager.removeRoute(labels['docker-ci.repo-url'] ?? containerInfos.Name);
+  }
+
   /**
-   * Add the route to wenhooks
+   * Add the route to webhooks
    * @param routeId 
    * @param id 
    */
@@ -81,14 +94,14 @@ class App {
    * @param id the id/name of the container to reload
    */
   private async _onUrlTriggered(id: string) {
+    let containerInfos: ContainerInspectInfo;
     try {
-      const containerInfos = await this._dockerManager.getContainer(id).inspect();
+      containerInfos = await this._dockerManager.getContainer(id).inspect();
       if (!await this._dockerManager.pullImage(containerInfos.Image, containerInfos.Config.Labels))
         throw "Error Pulling Image";
-      this._logger.log(containerInfos.Config.Image);
       await this._dockerManager.recreateContainer(id, containerInfos.Image);
     } catch (e) {
-      this._logger.error("Error Pulling Image and Recreating Container", e);
+      this._sendErrorMail(containerInfos, e?.stack ?? e);
     }
     try {
       this._dockerManager.pruneImages();
@@ -97,6 +110,17 @@ class App {
     }
   }
 
+  private async _sendErrorMail(infos: ContainerInspectInfo, error: string) {
+    try {
+      const labels: DockerCiLabels = infos?.Config?.Labels;
+      if (labels['docker-ci.email']?.includes("@"))
+        this._mailer.sendErrorMail(infos?.Name, labels?.["docker-ci.email"], error);
+      else
+        this._mailer.sendErrorMail(infos?.Name, null, error);
+    } catch (e) {
+      this._logger.error(e);
+    }
+  }
 }
 
 dotenv.config();

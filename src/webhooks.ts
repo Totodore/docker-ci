@@ -30,6 +30,10 @@ export class WebhooksManager {
     this._routes[id] = handler;
   }
 
+  public removeRoute(id: string) {
+    this._routes[id] && delete this._routes[id];
+  }
+
   /**
    * Check if the id in param exists, otherwise return a bad request 400
    * @param id 
