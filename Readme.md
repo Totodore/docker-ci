@@ -7,6 +7,20 @@ Docker-CI watch for container creations, it means that you don't have to restart
 Docker-CI will then create a route corresponding to this pattern : ```http(s)://0.0.0.0[:port]/deploy/:appName``` where the appName correspond to the name you gave to your container or to the name you gave through the option ```docker-ci.name```
 You can then set a Github Automation with an [Image building](https://github.com/actions/starter-workflows/blob/a571f2981ab5a22dfd9158f20646c2358db3654c/ci/docker-publish.yml) and you can then add a webhook to trigger the above url when the image is built and stored in the Github Package Registry or any other repository (e.g : Docker hub)
 
+Docker-CI can notify you by email in case of error, you can set an admin mail and individual email for each containers
+
+## Env Configuration :
+You can specify different Env Var to the docker-ci to configure it as you want
+|Name|Default|Description|
+|----|----|-----------|
+|`VERBOSE`|`false`|`Print all logs to the docker stdout`|
+|`PORT`|`3000`|`The port for the webhook server`|
+|`MAILING`|`false`|`Enable mailing in case of error`|
+|`MAIL_HOST`||`Mail server addr`|
+|`MAIL_ADDR`||`Email addr for the server`|
+|`MAIL_PWD`||`Password of the email addr`|
+|`MAIL_DEST`||`Emails destinations for the errors`|
+
 ## Base configuration :
 This is the default configuration, you just have to add docker-ci.enable in your docker-compose.yml :
 
@@ -26,6 +40,10 @@ In case your package is private, you can specify credentials in your config :
 | ```docker-ci.password```|```string (Optional)```|Set a password or a token for the docker package registry auth|
 | ```docker-ci.auth-server```|```string (Optional)```|Set an auth server for the docker package registry auth|
 
+## Mailing
+If you want to be notified when an error occurs when the container is redeployed you can add a mail
+|Name|Type|Description|
+|`docker-ci.email`|`string (Optional)`|Set a specific user email to be notified only for this user when an error occurs|
 
 ## Example
 
@@ -129,9 +147,10 @@ jobs:
 ## All Labels :
 |Name|Type|Description|
 |----|----|-----------|
-| ```docker-ci.enable```|```boolean```|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
-| ```docker-ci.repo-url```|```string```|Url of the image repo|
-| ```docker-ci.name```|```string (Optional)```|Set a custom name for the endpoint, by default it is the name of the container|
-| ```docker-ci.username```|```string (Optional)```|Set a username for the docker package registry auth|
-| ```docker-ci.password```|```string (Optional)```|Set a password or a token for the docker package registry auth|
-| ```docker-ci.auth-server```|```string (Optional)```|Set an auth server for the docker package registry auth|
+| `docker-ci.enable`|`boolean`|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
+| `docker-ci.repo-url`|`string`|Url of the image repo|
+| `docker-ci.name`|`string (Optional)`|Set a custom name for the endpoint, by default it is the name of the container|
+| `docker-ci.username`|`string (Optional)`|Set a username for the docker package registry auth|
+| `docker-ci.password`|`string (Optional)`|Set a password or a token for the docker package registry auth|
+| `docker-ci.auth-server`|`string (Optional)`|Set an auth server for the docker package registry auth|
+|`docker-ci.email`|`string (Optional)`|Set a specific user email to be notified only for this user when an error occurs|
