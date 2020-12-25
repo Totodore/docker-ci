@@ -1,7 +1,7 @@
 version: "3"
 services: 
   app:
-    image: "ghcr.io/clementdelestre/soundbox"
+    image: httpd
     container_name: soundbox
     volumes: 
       - "data:/data"
@@ -10,7 +10,7 @@ services:
     labels: 
       docker-ci.enable: 'true'
       docker-ci.name: hello-world
-      docker-ci.repo-url: ghcr.io/clementdelestre/
+      docker-ci.repo-url: httpd
       
 
 networks: 
