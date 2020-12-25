@@ -12,11 +12,14 @@ Docker-CI can notify you by email in case of error, you can set an admin mail an
 Webhooks can be protected by hash, in this case you need to call a protected api to get the hash
 ## Env Configuration :
 You can specify different Env Var to the docker-ci to configure it as you want
+
+### Basic conf
 |Name|Default|Description|
 |----|----|-----------|
 |`VERBOSE`|`false`|Print all logs to the docker stdout|
-|`PORT`|`3000`|The port for the webhook server|
+|`PORT`|`3000`|The port for the webhook server and the API in case of use|
 
+### Mailing
 |Name|Default|Description|
 |----|----|-----------|
 |`MAILING`|`false`|Enable mailing in case of error|
@@ -25,6 +28,7 @@ You can specify different Env Var to the docker-ci to configure it as you want
 |`MAIL_PWD`||Password of the email addr|
 |`MAIL_DEST`||Emails destinations for the errors|
 
+### Hashed webhooks
 |Name|Default|Description|
 |----|----|-----------|
 |`PROTECTED_WEBHOOKS`|`false`|Enable the webhooks protected by hash, an API is open through /api/:name to get the corresponding hash|
