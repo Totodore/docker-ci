@@ -18,8 +18,7 @@ class App {
     this._logger.log("Connecting to docker endpoint");
     await this._dockerManager.init();
     await this._webhooksManager.init();
-    if (process.env.MAILING)
-      await this._mailer.init();
+    process.env.MAILING && await this._mailer.init();
     
     this._dockerManager.addContainerEventListener("start", (res) => this._onCreateContainer(res));
     this._dockerManager.addContainerEventListener("destroy", (res) => this._onRemovedContainer(res));
@@ -69,21 +68,20 @@ class App {
     }
   }
 
+  /**
+   * Remove the route from webhooks
+   */
   private async _onRemovedContainer(res: DockerEventsModel.EventResponse) {
-    const containerId = res.Actor.ID;
-    const containerInfos = await this._dockerManager.getContainer(containerId).inspect();
-    const labels: DockerCiLabels = containerInfos.Config.Labels;
-    this._webhooksManager.removeRoute(labels['docker-ci.repo-url'] ?? containerInfos.Name);
+    this._logger.log("Container deletion detected :", res.Actor.Attributes.name);
+    this._webhooksManager.removeRoute(res.Actor.ID);
   }
 
   /**
    * Add the route to webhooks
-   * @param routeId 
-   * @param id 
    */
-  private async _addContainerConf(routeId: string, id: string) {
-    this._logger.info(`New webhook available at : ${this._webhooksManager.webhookUrl}/${routeId}`);
-    this._webhooksManager.addRoute(routeId, () => this._onUrlTriggered(id));
+  private async _addContainerConf(name: string, id: string) {
+    const hash = this._webhooksManager.addRoute(name, id, () => this._onUrlTriggered(id));
+    this._logger.info(`New webhook available at : ${this._webhooksManager.webhookUrl}/${hash}`);
   }
 
   /**

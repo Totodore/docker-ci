@@ -28,7 +28,7 @@ class MailerManager {
     await this._transporter.sendMail({
       from: process.env.MAIL_ADDR,
       to: process.env.MAIL_DEST,
-      subject: `Erreur lors du déploiement de : ${container}`,
+      subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
       html: `
         <h1 style='text-align: center'>Logs : </h1>
         <p>${error.join(" ")}</p>
@@ -38,7 +38,7 @@ class MailerManager {
       await this._transporter.sendMail({
         from: process.env.MAIL_ADDR,
         to: mailDest,
-        subject: `Erreur lors du déploiement de : ${container}`,
+        subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
         html: "Les administrateurs de ce serveur ont été notifiés",
       }).catch(e => this._logger.info("Error sending error mail"));
     }

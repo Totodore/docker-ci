@@ -9,17 +9,28 @@ You can then set a Github Automation with an [Image building](https://github.com
 
 Docker-CI can notify you by email in case of error, you can set an admin mail and individual email for each containers
 
+Webhooks can be protected by hash, in this case you need to call a protected api to get the hash
 ## Env Configuration :
 You can specify different Env Var to the docker-ci to configure it as you want
 |Name|Default|Description|
 |----|----|-----------|
 |`VERBOSE`|`false`|Print all logs to the docker stdout|
 |`PORT`|`3000`|The port for the webhook server|
+
+|Name|Default|Description|
+|----|----|-----------|
 |`MAILING`|`false`|Enable mailing in case of error|
 |`MAIL_HOST`||Mail server addr|
 |`MAIL_ADDR`||Email addr for the server|
 |`MAIL_PWD`||Password of the email addr|
 |`MAIL_DEST`||Emails destinations for the errors|
+
+|Name|Default|Description|
+|----|----|-----------|
+|`PROTECTED_WEBHOOKS`|`false`|Enable the webhooks protected by hash, an API is open through /api/:name to get the corresponding hash|
+|`API_PASSWORD`||The admin password to access the API|
+|`API_USER`||The admin username to access the API|
+|`PRIVATE_KEY`||Private Key to encode the hashs|
 
 ## Base configuration :
 This is the default configuration, you just have to add docker-ci.enable in your docker-compose.yml :
