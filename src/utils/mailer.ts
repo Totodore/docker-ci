@@ -10,13 +10,14 @@ class MailerManager {
 			pass: process.env.MAIL_PWD,
     },
   });
-
+  private _healthy: boolean = false;
   private readonly _logger = new Logger(this);
   
   public async init(): Promise<MailerManager> {
 		try {
 			this._logger.log("Checking mail server configuration...");
       await this._transporter.verify();
+      this._healthy = true;
 		} catch(e) {
 			this._logger.error("Mail error during verification", e);
     }
@@ -24,7 +25,10 @@ class MailerManager {
   }
   
   public async sendErrorMail(container: string, mailDest: string, ...error: any[]) {
-    this._logger.log("Envoi des emails d'erreur à :", mailDest, process.env.MAIL_DEST);
+    if (!this._healthy)
+      this._logger.log("No email sent, email system disabled from conf");
+    else 
+      this._logger.log("Sending error email to :", mailDest, process.env.MAIL_DEST);
     await this._transporter.sendMail({
       from: process.env.MAIL_ADDR,
       to: process.env.MAIL_DEST,

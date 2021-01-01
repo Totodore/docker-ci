@@ -80,8 +80,8 @@ class App {
    * Add the route to webhooks
    */
   private async _addContainerConf(name: string, id: string) {
-    const hash = this._webhooksManager.addRoute(name, id, () => this._onUrlTriggered(id));
-    this._logger.info(`New webhook available at : ${this._webhooksManager.webhookUrl}/${hash}`);
+    this._webhooksManager.addRoute(name, id, () => this._onUrlTriggered(id));
+    this._logger.info(`New webhook available at : ${this._webhooksManager.webhookUrl}/${name}`);
   }
 
   /**
