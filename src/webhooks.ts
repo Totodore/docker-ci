@@ -3,7 +3,7 @@ import * as express from "express";
 import * as crypto from "crypto";
 import fetch from "node-fetch";
 import * as bodyParser from "body-parser";
-import * as FormData from "form-data";
+import { isUrl, objectToFormdata } from "./utils/utils";
 import * as cors from "cors";
 import { WebhooksModel } from './models/webhooks.model';
 import { dockerhubCallbackConf } from "./conf/dockerhub-callback-body";
@@ -59,7 +59,7 @@ export class WebhooksManager {
       res.status(404).send("Bad request : invalid name");
       return;
     }
-    if ((routeData.secret && !this._verifySecret(routeData.secret, req)) || (routeData.callbackUrl && ! this._verifyCallback(req.body[routeData.callbackUrl]))) {
+    if ((routeData.secret && !this._verifySecret(routeData.secret, req)) || (routeData.callbackUrl && !await this._verifyCallback(req.body["callback_url"]))) {
       this._logger.info("Webhook triggered with invalid request");
       res.sendStatus(401);
       return;
@@ -70,25 +70,32 @@ export class WebhooksManager {
     this._logger.info(`${this.webhookUrl}/${routeData.name} triggered`);
   }
 
-  private _objectToFormData(object: { [k: string]: any }): FormData {
-    const formData = new FormData();
-    for (const key in object)
-      formData.append(key, object[key].toString());
-    return formData;
-  }
-
+  /**
+   * Verify that the given secret is valid
+   * Verify the Github webhooks
+   */
   private _verifySecret(secret: string, req: express.Request): boolean {
     if (!req.body)
       return false;
-    const token = req.header("X-Hub-Signature-256").split('='); //In case the token starts with SHA256=
+    const token = req.header("X-Hub-Signature-256")?.split('='); //In case the token starts with SHA256=
     const signature = crypto.createHmac("sha256", secret).update(JSON.stringify(req.body));
     return crypto.timingSafeEqual(Buffer.from(token[token.length - 1]), Buffer.from(signature.digest("hex")));
   }
 
+  /**
+   * Verify that the given callback exists
+   * Verify the Dockerhub webhooks
+   */
   private async _verifyCallback(callback: string): Promise<boolean> {
-    const formData = this._objectToFormData(dockerhubCallbackConf);
-    const req = await fetch(callback, { method: 'POST', body: formData });
-    return req.status < 200 || req.status > 300
+    if (!isUrl(callback))
+      return false;
+    const formData = objectToFormdata(dockerhubCallbackConf);
+    try {
+      const req = await fetch(callback, { method: 'POST', body: formData });
+      return req.status < 200 || req.status > 300
+    } catch (e) {
+      return false;
+    }
   }
 
   public get webhookUrl() { return `http://0.0.0.0:${process.env.PORT ?? 3000}${this.deployPath}`; };
