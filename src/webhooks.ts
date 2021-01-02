@@ -79,9 +79,9 @@ export class WebhooksManager {
     if (!req.body)
       return false;
     const token = req.header("X-Hub-Signature-256")?.split('='); //In case the token starts with SHA256=
-    this._logger.log("Given signature :", token);
+    this._logger.log("Given signature :", token[token.length - 1]);
     const signature = crypto.createHmac("sha256", secret).update(JSON.stringify(req.body));
-    this._logger.log("Generated signature :", signature);
+    this._logger.log("Generated signature :", signature.digest("hex"));
     return crypto.timingSafeEqual(Buffer.from(token[token.length - 1]), Buffer.from(signature.digest("hex")));
   }
 
