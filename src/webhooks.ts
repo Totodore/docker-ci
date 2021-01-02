@@ -75,10 +75,13 @@ export class WebhooksManager {
    * Verify the Github webhooks
    */
   private _verifySecret(secret: string, req: express.Request): boolean {
+    this._logger.log("Verifying secret...");
     if (!req.body)
       return false;
     const token = req.header("X-Hub-Signature-256")?.split('='); //In case the token starts with SHA256=
+    this._logger.log("Given signature :", token);
     const signature = crypto.createHmac("sha256", secret).update(JSON.stringify(req.body));
+    this._logger.log("Generated signature :", signature);
     return crypto.timingSafeEqual(Buffer.from(token[token.length - 1]), Buffer.from(signature.digest("hex")));
   }
 
