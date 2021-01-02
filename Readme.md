@@ -48,6 +48,8 @@ In case your package is private, you can specify credentials in your config :
 
 ## Protected Webhooks
 If you use Github or Dockerhub to send your webhooks you can protect them, it'll be impossible to trigger them
+⚠️You can only use one of these two labels for the same container⚠️
+
 |Name|Type|Description|
 |----|----|-----------|
 |`docker-ci.webhook-callback`|`boolean (Optional)`|Some webhook validation use a callback given in the body of the request (e.g : DockerHub)|
