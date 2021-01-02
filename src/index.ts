@@ -80,8 +80,9 @@ class App {
    * Add the route to webhooks
    */
   private async _addContainerConf(name: string, id: string) {
-    const hash = this._webhooksManager.addRoute(name, id, () => this._onUrlTriggered(id));
-    this._logger.info(`New webhook available at : ${this._webhooksManager.webhookUrl}/${hash}`);
+    const labels: DockerCiLabels = (await this._dockerManager.getContainer(id).inspect()).Config.Labels;
+    this._webhooksManager.addRoute(name, id, () => this._onUrlTriggered(id), labels['docker-ci.webhook-secret'], labels['docker-ci.webhook-callback']);
+    this._logger.info(`New webhook available at : ${this._webhooksManager.webhookUrl}/${name}`);
   }
 
   /**

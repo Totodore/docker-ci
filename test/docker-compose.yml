@@ -11,7 +11,8 @@ services:
       docker-ci.enable: 'true'
       docker-ci.name: hello-world
       docker-ci.repo-url: httpd
-      
+      # docker-ci.webhook-secret: TEST
+      docker-ci.webhook-callback: 'true'
 
 networks: 
   web:
