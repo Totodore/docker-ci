@@ -10,5 +10,5 @@ export interface DockerCiLabels {
   "docker-ci.auth-server"?: string;
 
   "docker-ci.webhook-secret"?: string;
-  "docker-ci.webhook-verify-url"?: string;
+  "docker-ci.webhook-callback"?: string;
 }
