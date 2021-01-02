@@ -1,8 +1,8 @@
 # Docker-CI
 
-Docker-CI is a little program which allow you to implement easy continuous integration through Github Workflows and docker-compose. It uses labels to set the different options to enable Docker-ci for each container. 
+Docker-CI is a little program which allow you to implement easy continuous integration using Github Container Registry or DockerHub. It uses labels to set the different options to enable Docker-ci for each container. 
 
-Docker-CI watch for container creations, it means that you don't have to restart Docker-CI whenever you update a container configuration.
+Docker-CI watch for container creations, it means that you don't have to restart it whenever you update a container configuration.
 
 Docker-CI will then create a route corresponding to this pattern : ```http(s)://0.0.0.0[:port]/deploy/:appName``` where the appName correspond to the name you gave to your container or to the name you gave through the option ```docker-ci.name```
 You can then set a Github Automation with an [Image building](https://github.com/actions/starter-workflows/blob/a571f2981ab5a22dfd9158f20646c2358db3654c/ci/docker-publish.yml) and you can then add a webhook to trigger the above url when the image is built and stored in the Github Package Registry or any other repository (e.g : Docker hub)
@@ -28,13 +28,13 @@ You can specify different Env Var to the docker-ci to configure it as you want
 |`MAIL_DEST`||Emails destinations for the errors|
 
 ## Base configuration :
-This is the default configuration, you just have to add docker-ci.enable in your docker-compose.yml :
+This is the default configuration for your container, you just have to add docker-ci.enable and the image url in your docker-compose.yml :
 
 |Name|Type|Description|
 |----|----|-----------|
-| ```docker-ci.enable```|```boolean```|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
-| ```docker-ci.repo-url```|```string```|Url of the image repository (same as what you put in image:)|
-| ```docker-ci.name```|```string (Optional)```|Set a custom name for the endpoint, by default it is the name of the container|
+| `docker-ci.enable`|`boolean`|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
+| `docker-ci.repo-url`|`string`|Url of the image repository (same as what you put in image:)|
+| `docker-ci.name`|`string (Optional)`|Set a custom name for the endpoint, by default it is the name of the container|
 
 
 ## Authentification
@@ -42,9 +42,16 @@ In case your package is private, you can specify credentials in your config :
 
 |Name|Type|Description|
 |----|----|-----------|
-| ```docker-ci.username```|```string (Optional)```|Set a username for the docker package registry auth|
-| ```docker-ci.password```|```string (Optional)```|Set a password or a token for the docker package registry auth|
-| ```docker-ci.auth-server```|```string (Optional)```|Set an auth server for the docker package registry auth|
+| `docker-ci.username`|`string (Optional)`|Set a username for the docker package registry auth|
+| `docker-ci.password`|`string (Optional)`|Set a password or a token for the docker package registry auth|
+| `docker-ci.auth-server`|`string (Optional)`|Set an auth server for the docker package registry auth|
+
+## Protected Webhooks
+If you use Github or Dockerhub to send your webhooks you can protect them, it'll be impossible to trigger them
+|Name|Type|Description|
+|----|----|-----------|
+|`docker-ci.webhook-callback`|`boolean (Optional)`|Some webhook validation use a callback given in the body of the request (e.g : DockerHub)|
+|`docker-ci.webhook-secret`|`string (Optional)`|Some webhook validation use a secret to encode the body with a HMAC-SHA-256 encryption (e.g : Github)|
 
 ## Mailing
 If you want to be notified when an error occurs when the container is redeployed you can add a mail
