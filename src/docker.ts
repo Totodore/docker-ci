@@ -58,6 +58,9 @@ export class DockerManager {
   public async pruneImages(): Promise<void> {
     await this._docker.pruneImages();
   }
+  public async getImageLength(): Promise<number> {
+    return (await this._docker.listImages()).length;
+  }
 
   /**
    * Pull an image from its tag

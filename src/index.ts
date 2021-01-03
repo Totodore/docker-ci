@@ -94,14 +94,19 @@ class App {
    */
   private async _onUrlTriggered(id: string) {
     let containerInfos: ContainerInspectInfo;
+    const previousImageLength = await this._dockerManager.getImageLength();
     try {
       containerInfos = await this._dockerManager.getContainer(id).inspect();
       if (!await this._dockerManager.pullImage(containerInfos.Image, containerInfos.Config.Labels))
         throw "Error Pulling Image";
-      await this._dockerManager.recreateContainer(id, containerInfos.Image);
+      if (previousImageLength < await this._dockerManager.getImageLength())
+        await this._dockerManager.recreateContainer(id, containerInfos.Image);
+      else
+        this._logger.info("Image already updated, no container restart needed");
     } catch (e) {
       this._sendErrorMail(containerInfos, e?.stack ?? e);
     }
+
     try {
       this._dockerManager.pruneImages();
     } catch (e) {
