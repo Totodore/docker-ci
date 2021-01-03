@@ -17,11 +17,15 @@ export class WebhooksManager {
 
   public async init() {
     this._app.use(cors({ origin: '*' }));
-    this._app.use(bodyParser.json());
+    this._app.use(bodyParser.json({
+      verify: (req: WebhooksModel.Request, res, buf) => {
+        req.rawBody = buf
+      }
+    }));
     this._app.use(bodyParser.urlencoded({ extended: true }));
     this._app.use(this._router);
 
-    this._router.all(`${this.deployPath}/:id`, (req, res) => this._webhookTriggered(req.params.id, res, req));
+    this._router.all(`${this.deployPath}/:id`, (req: WebhooksModel.Request, res) => this._webhookTriggered(req.params.id, res, req));
     
     return new Promise<void>((resolve) => this._app.listen(process.env.PORT ?? 3000, () => resolve())).catch(e => {
       this._logger.error(e);
@@ -53,7 +57,7 @@ export class WebhooksManager {
    * @param id 
    * @param res 
    */
-  private async _webhookTriggered(name: string, res: express.Response, req: express.Request) {
+  private async _webhookTriggered(name: string, res: express.Response, req: WebhooksModel.Request) {
     const routeData = this._routes.find(el => el.name === name);
     if (!routeData) {
       res.status(404).send("Bad request : invalid name");
@@ -74,15 +78,15 @@ export class WebhooksManager {
    * Verify that the given secret is valid
    * Verify the Github webhooks
    */
-  private _verifySecret(secret: string, req: express.Request): boolean {
+  private _verifySecret(secret: string, req: WebhooksModel.Request): boolean {
     this._logger.log("Verifying secret...");
     if (!req.body)
       return false;
-    const token = req.header("X-Hub-Signature-256")?.split('='); //In case the token starts with SHA256=
-    this._logger.log("Given signature :", token[token.length - 1]);
-    const signature = crypto.createHmac("sha256", secret).update(JSON.stringify(req.body));
-    this._logger.log("Generated signature :", signature.digest("hex"));
-    return crypto.timingSafeEqual(Buffer.from(token[token.length - 1]), Buffer.from(signature.digest("hex")));
+    const token = req.header("X-Hub-Signature-256")?.split('=')?.[req.header("X-Hub-Signature-256")?.split('=')?.length - 1]; //In case the token starts with SHA256=
+    this._logger.log("Given signature :", token);
+    const signature = crypto.createHmac("sha256", secret).update(req.rawBody).digest();
+    this._logger.log("Generated signature :", signature.toString("hex"));
+    return crypto.timingSafeEqual(Buffer.from(token, "hex"), signature);
   }
 
   /**
