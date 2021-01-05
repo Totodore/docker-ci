@@ -11,7 +11,7 @@ class MailerManager {
       type: "OAuth2",
       user: process.env.MAIL_ADDR,
       serviceClient: process.env.MAIL_ID,
-      privateKey: process.env.MAIL_PWD,
+      privateKey: process.env.MAIL_PWD.replace(/\\n/g, '\n'),
     } : {
       user: process.env.MAIL_ADDR,
       pass: process.env.MAIL_PWD
