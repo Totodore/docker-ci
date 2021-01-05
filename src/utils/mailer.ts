@@ -1,15 +1,23 @@
 import { Logger } from './logger';
-import { createTransport } from "nodemailer";
+import { createTransport, TransportOptions } from "nodemailer";
 
 class MailerManager {
 
   private readonly _transporter = createTransport({
     host: process.env.MAIL_HOST,
-		auth: {
+    port: process.env.MAIL_PORT,
+    secure: true,
+    auth: process.env.MAIL_OAUTH ? {
+      type: "OAuth2",
       user: process.env.MAIL_ADDR,
-			pass: process.env.MAIL_PWD,
+      serviceClient: process.env.MAIL_ID,
+      privateKey: process.env.MAIL_PWD,
+    } : {
+      user: process.env.MAIL_ADDR,
+      pass: process.env.MAIL_PWD
     },
-  });
+  } as TransportOptions);
+  
   private _healthy: boolean = false;
   private readonly _logger = new Logger(this);
   

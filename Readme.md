@@ -23,9 +23,12 @@ You can specify different Env Var to the docker-ci to configure it as you want
 |----|----|-----------|
 |`MAILING`|`false`|Enable mailing in case of error|
 |`MAIL_HOST`||Mail server addr|
+|`MAIL_PORT`||Mail port|
 |`MAIL_ADDR`||Email addr for the server|
-|`MAIL_PWD`||Password of the email addr|
 |`MAIL_DEST`||Emails destinations for the errors|
+|`MAIL_OAUTH`|`false`|Enable OAUTH for mailing|
+|`MAIL_ID`||Mail id if you are using OAUTH|
+|`MAIL_PWD`||Password of the email addr or private key if using OAUTH|
 
 ## Base configuration :
 This is the default configuration for your container, you just have to add docker-ci.enable and the image url in your docker-compose.yml :
