@@ -116,7 +116,7 @@ class App {
   private async _sendErrorMail(infos: ContainerInspectInfo, error: string) {
     try {
       const labels: DockerCiLabels = infos?.Config?.Labels;
-      if (labels['docker-ci.email']?.includes("@"))
+      if (labels?.['docker-ci.email']?.includes("@"))
         this._mailer.sendErrorMail(infos?.Name, labels?.["docker-ci.email"], error);
       else
         this._mailer.sendErrorMail(infos?.Name, null, error);
