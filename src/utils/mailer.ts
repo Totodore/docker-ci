@@ -1,7 +1,11 @@
 import { Logger } from './logger';
 import { createTransport } from "nodemailer";
 import { MailingConf } from '../models/mailing-conf.model';
-const mailConf: MailingConf = require("../../mail");
+
+let mailConf: MailingConf;
+try {
+  mailConf = require("../../mail");
+} catch (e) { console.log("MAILING DISABLED") };
 class MailerManager {
 
   private readonly _transporter = createTransport({
