@@ -4,7 +4,7 @@
 		"sourceMap": true,
 		"outDir": "bin",
 		"noImplicitAny": true,
-		"allowJs": true,
+		"allowJs": false,
 		"moduleResolution": "Node",
 		"baseUrl": ".",
 		"paths": {

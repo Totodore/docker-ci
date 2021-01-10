@@ -19,17 +19,21 @@ You can specify different Env Var to the docker-ci to configure it as you want
 |`PORT`|`3000`|The port for the webhook server and the API in case of use|
 
 ### Mailing
-|Name|Default|Description|
-|----|----|-----------|
-|`MAILING`|`false`|Enable mailing in case of error|
-|`MAIL_HOST`||Mail server addr|
-|`MAIL_PORT`||Mail port|
-|`MAIL_ADDR`||Email addr for the server|
-|`MAIL_DEST`||Emails destinations for the errors|
-|`MAIL_OAUTH`|`false`|Enable OAUTH for mailing|
-|`MAIL_ID`||Mail id if you are using OAUTH|
-|`MAIL_PWD`||Password of the email addr or private key if using OAUTH|
-
+You can use add mailing informations, then you will be notified if there is an error when deploying the container
+The mailing conf should be in a mail.json at the root of the app
+```json
+{
+    "mailing": boolean,       //Enable the mailing system
+	"mail_host": string,      //the host of the mail server, can be an IP or a domain name
+	"mail_port": number,      //The port of the mail server
+    "mail_password": string,  //The password for the mail server
+    "mail_addr": string,      //The sender mail address 
+	"mail_oauth": boolean,    //If the server use a basic auth system or an oauth system
+	"client_id": string,      //The client id for the oauth system
+	"private_key": string,    //The private key for the oauth system
+	"mail_admin": string,     //The admin mail where error alerts will be sent
+}
+```
 ## Base configuration :
 This is the default configuration for your container, you just have to add docker-ci.enable and the image url in your docker-compose.yml :
 

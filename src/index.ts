@@ -18,7 +18,7 @@ class App {
     this._logger.log("Connecting to docker endpoint");
     await this._dockerManager.init();
     await this._webhooksManager.init();
-    process.env.MAILING && await this._mailer.init();
+    await this._mailer.init();
     this._dockerManager.addContainerEventListener("start", (res) => this._onCreateContainer(res));
     this._dockerManager.addContainerEventListener("destroy", (res) => this._onRemovedContainer(res));
     this._logger.log("Connected to docker endpoint.");

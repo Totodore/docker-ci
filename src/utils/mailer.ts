@@ -1,28 +1,33 @@
 import { Logger } from './logger';
-import { createTransport, TransportOptions } from "nodemailer";
-
+import { createTransport } from "nodemailer";
+import { MailingConf } from '../models/mailing-conf.model';
+const mailConf: MailingConf = require("../../mail");
 class MailerManager {
 
   private readonly _transporter = createTransport({
-    host: process.env.MAIL_HOST,
-    port: process.env.MAIL_PORT,
+    host: mailConf?.mail_host,
+    port: mailConf?.mail_port,
     secure: true,
-    auth: process.env.MAIL_OAUTH ? {
+    auth: mailConf?.mail_oauth ? {
       type: "OAuth2",
-      user: process.env.MAIL_ADDR,
-      serviceClient: process.env.MAIL_ID,
-      privateKey: process.env.MAIL_PWD.replace(/\\n/g, '\n'),
+      user: mailConf?.mail_addr,
+      serviceClient: mailConf?.client_id,
+      privateKey: mailConf?.private_key,
     } : {
-      user: process.env.MAIL_ADDR,
-      pass: process.env.MAIL_PWD
+      user: mailConf?.mail_addr,
+      pass: mailConf?.mail_password
     },
-  } as TransportOptions);
+  });
   
   private _healthy: boolean = false;
   private readonly _logger = new Logger(this);
   
   public async init(): Promise<MailerManager> {
-		try {
+    try {
+      if (!mailConf?.mailing) {
+        this._logger.log("Mail Server disabled");
+        return;
+      }
 			this._logger.log("Checking mail server configuration...");
       await this._transporter.verify();
       this._healthy = true;
@@ -36,19 +41,21 @@ class MailerManager {
     if (!this._healthy)
       this._logger.log("No email sent, email system disabled from conf");
     else 
-      this._logger.log("Sending error email to :", mailDest, process.env.MAIL_DEST);
+      this._logger.log("Sending error email to :", mailDest, mailConf.mail_admin);
+    
     await this._transporter.sendMail({
-      from: process.env.MAIL_ADDR,
-      to: process.env.MAIL_DEST,
+      from: mailConf.mail_addr,
+      to: mailConf.mail_admin,
       subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
       html: `
         <h1 style='text-align: center'>Logs : </h1>
         <p>${error.join(" ")}</p>
       `
     }).catch(e => this._logger.info("Error sending error mail"));
+
     if (mailDest) {
       await this._transporter.sendMail({
-        from: process.env.MAIL_ADDR,
+        from: mailConf.mail_addr,
         to: mailDest,
         subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
         html: "Les administrateurs de ce serveur ont été notifiés",

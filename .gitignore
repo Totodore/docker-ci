@@ -110,3 +110,4 @@ bin/
 dist/
 .vscode/**
 data/**
+mail.json
