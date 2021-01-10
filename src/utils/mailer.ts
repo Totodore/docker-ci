@@ -37,29 +37,44 @@ class MailerManager {
     return this;
   }
   
-  public async sendErrorMail(container: string, mailDest: string, ...error: any[]) {
+  public async sendErrorMail(container: string, mailDest?: string, ...error: any[]) {
     if (!this._healthy)
       this._logger.log("No email sent, email system disabled from conf");
     else 
       this._logger.log("Sending error email to :", mailDest, mailConf.mail_admin);
-    
-    await this._transporter.sendMail({
-      from: mailConf.mail_addr,
-      to: mailConf.mail_admin,
-      subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
-      html: `
-        <h1 style='text-align: center'>Logs : </h1>
-        <p>${error.join(" ")}</p>
-      `
-    }).catch(e => this._logger.info("Error sending error mail"));
-
-    if (mailDest) {
+    try {
       await this._transporter.sendMail({
         from: mailConf.mail_addr,
-        to: mailDest,
+        to: mailConf.mail_admin,
         subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
-        html: "Les administrateurs de ce serveur ont été notifiés",
-      }).catch(e => this._logger.info("Error sending error mail"));
+        html: `
+          <h1 style='text-align: center'>Logs : </h1>
+          <p>${error.join(" ")}</p>
+        `
+      });
+      if (mailDest)
+        await this._transporter.sendMail({
+          from: mailConf.mail_addr,
+          to: mailDest,
+          subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
+          html: "Les administrateurs de ce serveur ont été notifiés",
+        });
+    } catch (e) {
+      this._logger.error("Error sending error mail", e)
+    }
+  }
+
+  public async sendNotifyMail(container: string, mailDest: string) {
+    try {
+      const date = new Date();
+      await this._transporter.sendMail({
+        from: mailConf.mail_addr,
+        to: mailConf.mail_admin,
+        subject: `Ton projet : ${container.substr(1)} s'est déployé avec succès !`,
+        html: `Ton projet : ${container.substr(1)} s'est déployé avec succès à ${date.getHours()}:${date.getMinutes()} le ${date.getDate()}/${date.getMonth()}/${date.getFullYear()} !`
+      });
+    } catch (e) {
+      this._logger.error("Error sending error mail", e)
     }
   }
 }

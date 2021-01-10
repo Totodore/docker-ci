@@ -4,6 +4,7 @@ export interface DockerCiLabels {
   "docker-ci.repo-url"?: string;
   
   "docker-ci.email"?: string;
+  "docker-ci.email.notify"?: boolean;
 
   "docker-ci.password"?: string;
   "docker-ci.username"?: string;

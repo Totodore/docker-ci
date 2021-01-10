@@ -58,6 +58,9 @@ export class DockerManager {
   public async pruneImages(): Promise<void> {
     await this._docker.pruneImages();
   }
+  /**
+   * Get the combined length of all docker images
+   */
   public async getImageLength(): Promise<number> {
     return (await this._docker.listImages()).length;
   }
@@ -66,36 +69,31 @@ export class DockerManager {
    * Pull an image from its tag
    * @returns true in case of success
    */
-  public async pullImage(imageName: string, containerLabels: DockerCiLabels): Promise<boolean> {
-    try {
-      const imageInfos = await this.getImage(imageName).inspect();
-      this._logger.info("Pulling : ", ...imageInfos.RepoTags);
-      let authConf: DockerImagesModel.PullImageAuth | undefined;
-      if (containerLabels["docker-ci.username"] && containerLabels["docker-ci.password"] && containerLabels["docker-ci.auth-server"]) {
-        authConf = {
-          username: containerLabels["docker-ci.username"],
-          password: containerLabels["docker-ci.password"],
-          serveraddress: containerLabels["docker-ci.auth-server"]
-        }
+  public async pullImage(imageName: string, containerLabels: DockerCiLabels) {
+    const imageInfos = await this.getImage(imageName).inspect();
+    this._logger.info("Pulling : ", ...imageInfos.RepoTags);
+    let authConf: DockerImagesModel.PullImageAuth | undefined;
+    if (containerLabels["docker-ci.username"] && containerLabels["docker-ci.password"] && containerLabels["docker-ci.auth-server"]) {
+      authConf = {
+        username: containerLabels["docker-ci.username"],
+        password: containerLabels["docker-ci.password"],
+        serveraddress: containerLabels["docker-ci.auth-server"]
       }
-      let data: any[] = [];
-      for(const tag of imageInfos.RepoTags)
-        data.push(await this._docker.pull(tag, authConf && { authconfig: authConf }));
-      const message: IncomingMessage = data[0];
-      message?.on("data", (data) => {
-        try {
-          this._logger.log(JSON.parse(data));
-        } catch (e) {
-          this._logger.log(data.toString())
-        }
-      });
-      return new Promise<boolean>((resolve, reject) => {
-        message?.on("end", () => resolve(true)) || resolve(true); 
-      });
-    } catch (e) {
-      this._logger.error("Error pulling image", e);
-      return false;
     }
+    let data: any[] = [];
+    for(const tag of imageInfos.RepoTags)
+      data.push(await this._docker.pull(tag, authConf && { authconfig: authConf }));
+    const message: IncomingMessage = data[0];
+    message?.on("data", (data) => {
+      try {
+        this._logger.log(JSON.parse(data));
+      } catch (e) {
+        this._logger.log(data.toString())
+      }
+    });
+    return new Promise<boolean>((resolve, reject) => {
+      message?.on("end", () => resolve(true)) || resolve(true); 
+    });
   }
 
   /**

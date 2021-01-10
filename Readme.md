@@ -64,10 +64,10 @@ If you use Github or Dockerhub to send your webhooks you can protect them, it'll
 
 ## Mailing
 If you want to be notified when an error occurs when the container is redeployed you can add a mail
-|Name|Type|Description|
-|----|----|-----------|
-|`docker-ci.email`|`string (Optional)`|Set a specific user email to be notified only for this user when an error occurs|
-
+|Name|Description|
+|----|-----------|
+|`docker-ci.email`|Set a specific user email to be notified only for this user when an error occurs|
+|`docker-ci.email.notify`|Docker-ci will send email notification when container is redeployed|
 ## Example
 
 ### docker-compose.yml of docker-ci app
@@ -106,6 +106,9 @@ services:
       - "docker-ci.password=MyPasswordOrToken" #Registry Password or token 
       - "docker-ci.username=MyRegistryUsername"
       - "docker-ci.auth-server=MyRegistryURL" #Ex for Github Registry : https://ghcr.io or https://docker.pkg.github.com
+
+      - "docker-ci.email=prevottheodore@gmail.com" #Notify this email when errors occured when redeploying this container
+      - "docker-ci.email.notify=true" #Notify the above email when this container is redeployed
 ```
 
 ### docker-publish in the github repo :
@@ -168,12 +171,13 @@ jobs:
 ```
 
 ## All Labels :
-|Name|Type|Description|
-|----|----|-----------|
-| `docker-ci.enable`|`boolean`|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
-| `docker-ci.repo-url`|`string`|Url of the image repo|
-| `docker-ci.name`|`string (Optional)`|Set a custom name for the endpoint, by default it is the name of the container|
-| `docker-ci.username`|`string (Optional)`|Set a username for the docker package registry auth|
-| `docker-ci.password`|`string (Optional)`|Set a password or a token for the docker package registry auth|
-| `docker-ci.auth-server`|`string (Optional)`|Set an auth server for the docker package registry auth|
-|`docker-ci.email`|`string (Optional)`|Set a specific user email to be notified only for this user when an error occurs|
+|Name|Description|
+|----|-----------|
+| `docker-ci.enable`|Enable CI for this container, an endpoint will be created for this container and whenever it will be called the container image will be repulled and the container will be recreated (total update of the container)|
+| `docker-ci.repo-url`|Url of the image repo|
+| `docker-ci.name`|Set a custom name for the endpoint, by default it is the name of the container|
+| `docker-ci.username`|Set a username for the docker package registry auth|
+| `docker-ci.password`|Set a password or a token for the docker package registry auth|
+| `docker-ci.auth-server`|Set an auth server for the docker package registry auth|
+|`docker-ci.email`|Set a specific user email to be notified only for this user when an error occurs|
+|`docker-ci.email.notify`|Notify the above email that the container has been updated|

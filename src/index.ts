@@ -93,13 +93,22 @@ class App {
    */
   private async _onUrlTriggered(id: string) {
     let containerInfos: ContainerInspectInfo;
-    const previousImageLength = await this._dockerManager.getImageLength();
+    let previousImageLength: number;
+    let labels: DockerCiLabels;
     try {
-      containerInfos = await this._dockerManager.getContainer(id).inspect();
-      if (!await this._dockerManager.pullImage(containerInfos.Image, containerInfos.Config.Labels))
-        throw "Error Pulling Image";
-      if (previousImageLength < await this._dockerManager.getImageLength())
+      previousImageLength = await this._dockerManager.getImageLength();
+      containerInfos = await this._dockerManager.getContainer(id).inspect();  
+      labels = containerInfos?.Config?.Labels;
+    } catch (e) {
+      this._sendErrorMail(null, "Impossible to get container infos " + id);
+      return;
+    }
+    try {
+      await this._dockerManager.pullImage(containerInfos.Image, containerInfos.Config.Labels);
+      if (previousImageLength < await this._dockerManager.getImageLength()) {
         await this._dockerManager.recreateContainer(id, containerInfos.Image);
+        labels?.['docker-ci.email.notify'] && this._mailer.sendNotifyMail(id, labels?.['docker-ci.email']);
+      }
       else
         this._logger.info("Image already updated, no container restart needed");
     } catch (e) {
@@ -113,7 +122,7 @@ class App {
     }
   }
 
-  private async _sendErrorMail(infos: ContainerInspectInfo, error: string) {
+  private async _sendErrorMail(infos: ContainerInspectInfo | null, error: string) {
     try {
       const labels: DockerCiLabels = infos?.Config?.Labels;
       if (labels?.['docker-ci.email']?.includes("@"))
