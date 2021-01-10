@@ -20,7 +20,7 @@ You can specify different Env Var to the docker-ci to configure it as you want
 
 ### Mailing
 You can use add mailing informations, then you will be notified if there is an error when deploying the container
-The mailing conf should be in a mail.json at the root of the app
+The mailing conf should be in a mail.json in the `conf` dir at the root
 ```jsonc
 {
     	"mailing": boolean,       //Enable the mailing system
@@ -79,6 +79,7 @@ services:
     image: theodoreprevot/docker-ci:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./conf:/app/conf  #Directory in which to put the mailing conf (mail.json)
     restart: always
     ports:
       - "5050:80"

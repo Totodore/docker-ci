@@ -4,7 +4,7 @@ import { MailingConf } from '../models/mailing-conf.model';
 
 let mailConf: MailingConf;
 try {
-  mailConf = require("../../mail");
+  mailConf = require("../../conf/mail");
 } catch (e) { console.log("MAILING DISABLED") };
 class MailerManager {
 
