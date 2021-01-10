@@ -21,7 +21,7 @@ You can specify different Env Var to the docker-ci to configure it as you want
 ### Mailing
 You can use add mailing informations, then you will be notified if there is an error when deploying the container
 The mailing conf should be in a mail.json at the root of the app
-```json
+```jsonc
 {
     "mailing": boolean,       //Enable the mailing system
 	"mail_host": string,      //the host of the mail server, can be an IP or a domain name
