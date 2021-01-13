@@ -50,7 +50,7 @@ class MailerManager {
       await this._transporter.sendMail({
         from: mailConf.mail_addr,
         to: mailConf.mail_admin,
-        subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
+        subject: `Erreur lors du déploiement de : ${container?.substr(1)}`,
         html: `
           <h1 style='text-align: center'>Logs : </h1>
           <p>${error.join(" ")}</p>
@@ -60,7 +60,7 @@ class MailerManager {
         await this._transporter.sendMail({
           from: mailConf.mail_addr,
           to: mailDest,
-          subject: `Erreur lors du déploiement de : ${container.substr(1)}`,
+          subject: `Erreur lors du déploiement de : ${container?.substr(1)}`,
           html: "Les administrateurs de ce serveur ont été notifiés",
         });
     } catch (e) {
