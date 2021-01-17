@@ -1,4 +1,6 @@
 # Docker-CI
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FTotodore%2Fdocker-ci.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FTotodore%2Fdocker-ci?ref=badge_shield)
+
 
 Docker-CI is a little program which allow you to implement easy continuous integration using Github Container Registry or DockerHub. It uses labels to set the different options to enable Docker-ci for each container. 
 
@@ -182,3 +184,6 @@ jobs:
 | `docker-ci.auth-server`|Set an auth server for the docker package registry auth|
 |`docker-ci.email`|Set a specific user email to be notified only for this user when an error occurs|
 |`docker-ci.email.notify`|Notify the above email that the container has been updated|
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FTotodore%2Fdocker-ci.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FTotodore%2Fdocker-ci?ref=badge_large)
