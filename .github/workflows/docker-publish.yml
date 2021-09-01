@@ -50,11 +50,11 @@ jobs:
 
       
       - name: Log into dockerhub
-        run: echo "${{ secrets.TOKEN }}" | docker login -u ${{ secrets.USERNAME }} --password-stdin
+        run: echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u theodoreprevot --password-stdin
 
       - name: Push image to dockerhub
         run: |
-          IMAGE_ID=${{ secrets.REPO }}/$IMAGE_NAME
+          IMAGE_ID=theodoreprevot/docker-ci/$IMAGE_NAME
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
           # Strip git ref prefix from version
