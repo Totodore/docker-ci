@@ -54,7 +54,7 @@ jobs:
 
       - name: Push image to dockerhub
         run: |
-          IMAGE_ID=theodoreprevot/docker-ci/$IMAGE_NAME
+          IMAGE_ID=theodoreprevot/$IMAGE_NAME
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
           # Strip git ref prefix from version
