@@ -1,10 +1,10 @@
 {
 	"compilerOptions": {
-		"module": "CommonJS",
+		"module": "commonjs",
 		"sourceMap": true,
 		"outDir": "bin",
 		"noImplicitAny": true,
-		"allowJs": false,
+		"allowJs": true,
 		"moduleResolution": "Node",
 		"baseUrl": ".",
 		"paths": {

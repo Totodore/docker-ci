@@ -2,33 +2,39 @@ import { Logger } from './logger';
 import { createTransport } from "nodemailer";
 import { MailingConf } from '../models/mailing-conf.model';
 
-let mailConf: MailingConf;
-try {
-  mailConf = require("../../conf/mail");
-} catch (e) { console.log("MAILING DISABLED") };
 class MailerManager {
 
+  private readonly mailConf?: MailingConf;
+
   private readonly _transporter = createTransport({
-    host: mailConf?.mail_host,
-    port: mailConf?.mail_port,
+    host: this.mailConf?.mail_host,
+    port: this.mailConf?.mail_port,
     secure: true,
-    auth: mailConf?.mail_oauth ? {
+    auth: this.mailConf?.mail_oauth ? {
       type: "OAuth2",
-      user: mailConf?.mail_addr,
-      serviceClient: mailConf?.client_id,
-      privateKey: mailConf?.private_key,
+      user: this.mailConf?.mail_addr,
+      serviceClient: this.mailConf?.client_id,
+      privateKey: this.mailConf?.private_key,
     } : {
-      user: mailConf?.mail_addr,
-      pass: mailConf?.mail_password
+      user: this.mailConf?.mail_addr,
+      pass: this.mailConf?.mail_password
     },
   });
   
   private _healthy: boolean = false;
   private readonly _logger = new Logger(this);
   
+  constructor() {
+    try {
+      this.mailConf = require("../../conf/mail");
+    } catch (e) {
+      this._logger.log("Mail conf disabled");
+    };
+  }
+
   public async init(): Promise<MailerManager> {
     try {
-      if (!mailConf?.mailing) {
+      if (!this.mailConf?.mailing) {
         this._logger.log("Mail Server disabled");
         return;
       }
@@ -42,14 +48,16 @@ class MailerManager {
   }
   
   public async sendErrorMail(container: string, mailDest?: string, ...error: any[]) {
-    if (!this._healthy)
+    if (!this._healthy) {
       this._logger.log("No email sent, email system disabled from conf");
+      return;
+    }
     else 
-      this._logger.log("Sending error email to :", mailDest, mailConf.mail_admin);
+      this._logger.log("Sending error email to :", mailDest, this.mailConf.mail_admin);
     try {
       await this._transporter.sendMail({
-        from: mailConf.mail_addr,
-        to: mailConf.mail_admin,
+        from: this.mailConf.mail_addr,
+        to: this.mailConf.mail_admin,
         subject: `Erreur lors du déploiement de : ${container?.substr(1)}`,
         html: `
           <h1 style='text-align: center'>Logs : </h1>
@@ -58,7 +66,7 @@ class MailerManager {
       });
       if (mailDest)
         await this._transporter.sendMail({
-          from: mailConf.mail_addr,
+          from: this.mailConf.mail_addr,
           to: mailDest,
           subject: `Erreur lors du déploiement de : ${container?.substr(1)}`,
           html: "Les administrateurs de ce serveur ont été notifiés",
@@ -72,8 +80,8 @@ class MailerManager {
     try {
       const date = new Date();
       await this._transporter.sendMail({
-        from: mailConf.mail_addr,
-        to: mailConf.mail_admin,
+        from: this.mailConf.mail_addr,
+        to: this.mailConf.mail_admin,
         subject: `Ton projet : ${container.substr(1)} s'est déployé avec succès !`,
         html: `Ton projet : ${container.substr(1)} s'est déployé avec succès à ${date.getHours()}:${date.getMinutes()} le ${date.getDate()}/${date.getMonth()}/${date.getFullYear()} !`
       });
