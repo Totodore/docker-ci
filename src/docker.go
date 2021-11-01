@@ -29,6 +29,7 @@ func InitDockerInstance() *DockerClient {
 }
 
 func (docker *DockerClient) listenToEvents() {
+	log.Println("Listening for container creation and deletion")
 	body, err := docker.cli.Events(context.Background(), types.EventsOptions{
 		Filters: filters.NewArgs(filters.Arg("type", "container")),
 	})
@@ -36,8 +37,7 @@ func (docker *DockerClient) listenToEvents() {
 		select {
 		case msg := <-body:
 			//Get handler and if it exists and then check if msg type correspond to current event
-			log.Println("Event received: ", msg.Type)
-			if handler, ok := docker.events[ContainerEvent(msg.Actor.ID)]; msg.Type == events.ContainerEventType && ok {
+			if handler, ok := docker.events[ContainerEvent(msg.Action)]; msg.Type == events.ContainerEventType && ok {
 				handler(msg)
 			}
 		case err := <-err:
@@ -54,7 +54,7 @@ func (docker *DockerClient) getContainersEnabled() []types.Container {
 	}
 	enabledContainers := make([]types.Container, 0)
 	for _, container := range containers {
-		if container.Labels["docker-ci.enable"] == "true" && container.Labels["docker-ci.repo-url"] != "" {
+		if container.Labels["docker-ci.enable"] == "true" {
 			enabledContainers = append(enabledContainers, container)
 		}
 	}

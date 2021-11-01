@@ -4,22 +4,25 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/julienschmidt/httprouter"
 )
 
-func startServer(onRequest func(name string)) {
+func startServer(onRequest func(name string) int) {
 	port := os.Getenv("PORT")
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		requestHandler(w, req, onRequest)
-	}
-	http.HandleFunc("/", handler)
-	log.Println("Listing for requests at http://localhost:" + port + "/")
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	router := httprouter.New()
+	router.GET("/hooks/:name", func(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		requestHandler(w, params, onRequest)
+	})
+	log.Println("Listening for requests at http://localhost:" + port + "/hooks/")
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
-func requestHandler(w http.ResponseWriter, req *http.Request, onRequest func(name string)) {
-	name := req.URL.Query().Get("name")
+func requestHandler(w http.ResponseWriter, params httprouter.Params, onRequest func(name string) int) {
+	name := params.ByName("name")
 	if len(name) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 	} else {
-		onRequest(name)
+		status := onRequest(name)
+		w.WriteHeader(status)
 	}
 }
