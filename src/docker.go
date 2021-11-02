@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log"
@@ -85,7 +86,7 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 		docker.panic(name, "Error while fetching container", err)
 	}
 	//Pulling Image
-	authToken := getContainerCredsToken(&containerInfos)
+	authToken := docker.getContainerCredsToken(&containerInfos)
 	reader, err := docker.cli.ImagePull(ctx, containerInfos.Config.Image, types.ImagePullOptions{All: false, RegistryAuth: authToken})
 	if err != nil {
 		docker.panic(name, "Error while pulling image:", err)
@@ -170,13 +171,16 @@ func (docker *DockerClient) print(name string, args ...interface{}) {
 }
 
 //Read auth config from container labels and return a base64 encoded string for docker.
-func getContainerCredsToken(container *types.ContainerJSON) string {
+func (docker *DockerClient) getContainerCredsToken(container *types.ContainerJSON) string {
 	serveraddress := container.Config.Labels["docker-ci.auth-server"]
 	password := container.Config.Labels["docker-ci.password"]
 	username := container.Config.Labels["docker-ci.username"]
-	var auth []byte
 	if serveraddress != "" && username != "" && password != "" {
-		auth, _ = json.Marshal(DockerAuth{Username: username, Password: password, Serveraddress: serveraddress})
+		data, err := json.Marshal(DockerAuth{Username: username, Password: password, Serveraddress: serveraddress})
+		if err != nil {
+			docker.panic(container.Name[1:], "Error while marshalling auth config:", err)
+		}
+		auth := base64.StdEncoding.EncodeToString(data)
 		return string(auth)
 	} else {
 		return ""
