@@ -17,6 +17,10 @@ type ContainerInfo struct {
 var docker *DockerClient
 var enabledContainers []ContainerInfo
 
+//Parse the environment variables
+//Init docker instance and bind events
+//Start event listening and load current container config
+//Start the http server
 func main() {
 	if os.Getenv("DOCKER_HOST") == "" {
 		err := godotenv.Load()
@@ -61,6 +65,8 @@ func onDestroyContainer(msg events.Message) {
 	log.Println("Container deletion detected:", msg.Actor.Attributes["name"])
 	defer loadContainersConfig()
 }
+
+//Get a ContainerInfo object from a container name
 func getContainerFromName(name string) *ContainerInfo {
 	name = strings.ToLower(name)
 	for _, container := range enabledContainers {

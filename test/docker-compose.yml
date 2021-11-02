@@ -1,14 +1,21 @@
 version: "3"
 services: 
   app:
-    image: httpd
-    container_name: blabla
+    image: ghcr.io/totodore/herogu-test-php:latest
+    container_name: herogu-test-php
     volumes: 
       - "data:/data"
+    expose:
+      - 80
+    ports:
+      - 8080:80
     networks: 
       - "web"
     labels: 
       docker-ci.enable: true
+      docker-ci.auth-server: ghcr.io
+      docker-ci.username: totodore
+      docker-ci.password: dc40612a01f34ea5a2c073e2203edfd2b65003a0
       # docker-ci.webhook-callback: 'true'
 
 networks: 

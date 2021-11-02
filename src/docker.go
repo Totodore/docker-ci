@@ -35,6 +35,7 @@ func InitDockerInstance() *DockerClient {
 	return &DockerClient{cli, make(map[ContainerEvent]func(event events.Message))}
 }
 
+//Listen to container events and call the function associated with the event
 func (docker *DockerClient) ListenToEvents() {
 	log.Printf("Listening for container %v", docker.mapKeys(docker.events))
 	body, err := docker.cli.Events(context.Background(), types.EventsOptions{
@@ -53,6 +54,7 @@ func (docker *DockerClient) ListenToEvents() {
 	}
 }
 
+//Get a slice with all the container that have docker-ci enabled
 func (docker *DockerClient) GetContainersEnabled() []types.Container {
 	containers, err := docker.cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
@@ -67,6 +69,8 @@ func (docker *DockerClient) GetContainersEnabled() []types.Container {
 	return enabledContainers
 }
 
+//This method will pull the container image, check if it is the same that the current
+//In case of a new one the container will be recreated and restarted
 func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -143,6 +147,7 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	return err
 }
 
+//Get the list of the listened events
 func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Message)) []string {
 	keys := make([]string, len(m))
 
@@ -154,16 +159,17 @@ func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Messa
 	return keys
 }
 
+//Panic with container name
 func (docker *DockerClient) panic(name string, args ...interface{}) {
 	log.Panicf("[%s] %v", name, strings.Join(InterfaceToStringSlice(args), " "))
 }
+
+//Print with container name
 func (docker *DockerClient) print(name string, args ...interface{}) {
 	log.Printf("[%s] %v", name, strings.Join(InterfaceToStringSlice(args), " "))
 }
 
-/**
- * Read auth config from container labels and return a base64 encoded string for docker.
- */
+//Read auth config from container labels and return a base64 encoded string for docker.
 func getContainerCredsToken(container *types.ContainerJSON) string {
 	serveraddress := container.Config.Labels["docker-ci.auth-server"]
 	password := container.Config.Labels["docker-ci.password"]

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +18,9 @@ func startServer(onRequest func(name string) (int, string)) {
 	log.Println("Listening for requests at http://localhost:" + port + "/hooks/")
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }
+
+//Handler for webhooks
+//Trigger onRequest when a webhook is received
 func requestHandler(w http.ResponseWriter, params httprouter.Params, onRequest func(name string) (int, string)) {
 	name := params.ByName("name")
 	if len(name) == 0 {
@@ -24,6 +28,6 @@ func requestHandler(w http.ResponseWriter, params httprouter.Params, onRequest f
 	} else {
 		status, msg := onRequest(name)
 		w.WriteHeader(status)
-		w.Write([]byte(msg))
+		io.WriteString(w, msg)
 	}
 }
