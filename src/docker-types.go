@@ -29,16 +29,17 @@ const (
 	unpause_container       ContainerEvent = "unpause"
 	update_container        ContainerEvent = "update"
 )
-const (
-	delete_image ImageEvent = "delete"
-	import_image ImageEvent = "import"
-	load_image   ImageEvent = "load"
-	pull_image   ImageEvent = "pull"
-	push_image   ImageEvent = "push"
-	save_image   ImageEvent = "save"
-	tag_image    ImageEvent = "tag"
-	untag_image  ImageEvent = "untag"
-)
+
+// const (
+// 	delete_image ImageEvent = "delete"
+// 	import_image ImageEvent = "import"
+// 	load_image   ImageEvent = "load"
+// 	pull_image   ImageEvent = "pull"
+// 	push_image   ImageEvent = "push"
+// 	save_image   ImageEvent = "save"
+// 	tag_image    ImageEvent = "tag"
+// 	untag_image  ImageEvent = "untag"
+// )
 
 type DockerAuth struct {
 	Username      string `json:"username,omitempty"`

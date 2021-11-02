@@ -50,6 +50,7 @@ func onRequest(name string) (int, string) {
 	if err := docker.UpdateContainer(containerInfos.Id); err != nil {
 		return 500, "Failed to update container " + name
 	}
+	log.Printf("Container %s successfully updated", name)
 	return 200, "Done"
 }
 func onCreateContainer(msg events.Message) {

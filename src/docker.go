@@ -106,14 +106,6 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	}
 	defer reader.Close()
 
-	//Checking if image has been updated
-	//If not we stop updating the container
-	previousImageId := containerInfos.Image
-	newImageId := docker.getImageIDFromName(containerInfos.Config.Image)
-	if previousImageId == newImageId {
-		return err
-	}
-
 	//Stopping Container
 	if containerInfos.State.Running {
 		duration, _ := time.ParseDuration("5s")
@@ -132,9 +124,12 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	}
 	//Starting Container
 	if err := docker.cli.ContainerStart(ctx, createdContainer.ID, types.ContainerStartOptions{}); err != nil {
-		panic(err)
+		log.Panic("Error while starting container:", err)
 	}
-
+	//Removing former image
+	if _, err := docker.cli.ImageRemove(ctx, imageInfos.ID, types.ImageRemoveOptions{Force: true}); err != nil {
+		log.Panic("Error while removing former image:", err)
+	}
 	statusCh, errCh := docker.cli.ContainerWait(ctx, createdContainer.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
@@ -171,20 +166,4 @@ func getContainerCredsToken(container *types.ContainerJSON) string {
 	} else {
 		return ""
 	}
-}
-
-func (docker *DockerClient) getImageIDFromName(imageName string) string {
-	images, err := docker.cli.ImageList(context.Background(), types.ImageListOptions{All: true})
-	if err != nil {
-		log.Println("Error while fetching images", err)
-		return ""
-	}
-	for _, image := range images {
-		for _, tag := range image.RepoTags {
-			if tag == imageName {
-				return image.ID
-			}
-		}
-	}
-	return ""
 }
