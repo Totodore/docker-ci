@@ -25,14 +25,14 @@ type DockerClient struct {
 
 func InitDockerInstance() *DockerClient {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
-	version, err1 := cli.ServerVersion(context.Background())
-	if err == nil && err1 == nil {
-		log.Println("Connected to docker sock version:", version.Version)
-	} else if err != nil {
-		log.Fatal("Docker instance error ", err)
-	} else if err1 != nil {
-		log.Fatal("Docker instance error ", err1)
+	if err != nil {
+		log.Fatal("Docker instance error:", err)
 	}
+	version, err := cli.ServerVersion(context.Background())
+	if err != nil {
+		log.Fatal("Docker instance error:", err)
+	}
+	log.Println("Connected to docker sock version:", version.Version)
 	return &DockerClient{cli, make(map[ContainerEvent]func(event events.Message))}
 }
 
