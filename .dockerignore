@@ -1,0 +1,10 @@
+.env
+.gitignore
+*.exe
+test/**
+bin/
+docker/**
+dist/
+.vscode/**
+data/**
+.github/
