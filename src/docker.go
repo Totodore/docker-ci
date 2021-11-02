@@ -155,17 +155,10 @@ func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Messa
 }
 
 func (docker *DockerClient) panic(name string, args ...interface{}) {
-	log.Panicf("[%s] %v", name, strings.Join([]string(interfaceToStringSlice(args)), " "))
+	log.Panicf("[%s] %v", name, strings.Join(InterfaceToStringSlice(args), " "))
 }
 func (docker *DockerClient) print(name string, args ...interface{}) {
-	log.Printf("[%s] %v", name, strings.Join([]string(interfaceToStringSlice(args)), " "))
-}
-func interfaceToStringSlice(params []interface{}) []string {
-	var paramSlice []string
-	for _, param := range params {
-		paramSlice = append(paramSlice, param.(string))
-	}
-	return paramSlice
+	log.Printf("[%s] %v", name, strings.Join(InterfaceToStringSlice(args), " "))
 }
 
 /**
