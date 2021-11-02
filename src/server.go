@@ -8,7 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-func startServer(onRequest func(name string) int) {
+func startServer(onRequest func(name string) (int, string)) {
 	port := os.Getenv("PORT")
 	router := httprouter.New()
 	router.GET("/hooks/:name", func(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
@@ -17,12 +17,13 @@ func startServer(onRequest func(name string) int) {
 	log.Println("Listening for requests at http://localhost:" + port + "/hooks/")
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }
-func requestHandler(w http.ResponseWriter, params httprouter.Params, onRequest func(name string) int) {
+func requestHandler(w http.ResponseWriter, params httprouter.Params, onRequest func(name string) (int, string)) {
 	name := params.ByName("name")
 	if len(name) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 	} else {
-		status := onRequest(name)
+		status, msg := onRequest(name)
 		w.WriteHeader(status)
+		w.Write([]byte(msg))
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/docker/docker/api/types/events"
 	"github.com/joho/godotenv"
@@ -24,8 +25,8 @@ func main() {
 		}
 	}
 	docker = InitDockerInstance()
-	docker.events[start_container] = onCreateContainer
-	docker.events[stop_container] = onDestroyContainer
+	docker.events[create_container] = onCreateContainer
+	docker.events[destroy_container] = onDestroyContainer
 	go docker.ListenToEvents()
 	loadContainersConfig()
 	startServer(onRequest)
@@ -40,29 +41,33 @@ func loadContainersConfig() {
 		log.Printf("Webhook available at: %s/hooks/%s", os.Getenv("BASE_URL"), name)
 	}
 }
-func onRequest(name string) int {
-	if !isContainerEnabled(name) {
-		return 400
+func onRequest(name string) (int, string) {
+	containerInfos := getContainerFromName(name)
+	if containerInfos == nil {
+		return 400, "Container not found"
 	}
-	log.Println("Request received for " + name)
-
-	return 200
+	log.Println("Request received for service:", name)
+	if err := docker.UpdateContainer(containerInfos.Id); err != nil {
+		return 500, "Failed to update container " + name
+	}
+	return 200, "Done"
 }
 func onCreateContainer(msg events.Message) {
 	log.Println("Container creation detected:", msg.Actor.Attributes["name"])
 	defer loadContainersConfig()
 }
 func onDestroyContainer(msg events.Message) {
-	log.Println("Container deletion detected: ", msg.Actor.Attributes["name"])
+	log.Println("Container deletion detected:", msg.Actor.Attributes["name"])
 	defer loadContainersConfig()
 }
-func isContainerEnabled(name string) bool {
+func getContainerFromName(name string) *ContainerInfo {
+	name = strings.ToLower(name)
 	for _, container := range enabledContainers {
 		for _, containerName := range container.Names {
-			if containerName == "/"+name {
-				return true
+			if strings.ToLower(containerName) == "/"+name {
+				return &container
 			}
 		}
 	}
-	return false
+	return nil
 }

@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
+	"regexp"
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -49,8 +53,7 @@ func (docker *DockerClient) ListenToEvents() {
 }
 
 func (docker *DockerClient) GetContainersEnabled() []types.Container {
-	docker.cli.ContainerList(context.Background(), types.ContainerListOptions{})
-	containers, err := docker.cli.ContainerList(context.Background(), types.ContainerListOptions{})
+	containers, err := docker.cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
 		log.Panic(err)
 	}
@@ -62,28 +65,85 @@ func (docker *DockerClient) GetContainersEnabled() []types.Container {
 	}
 	return enabledContainers
 }
-func (docker *DockerClient) UpdateContainer(containerId string) {
-	container, err := docker.cli.ContainerInspect(context.Background(), containerId)
+
+func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(r.(string))
+		}
+	}()
+	ctx := context.Background()
+	containerInfos, err := docker.cli.ContainerInspect(ctx, containerId)
+	imageInfos, _, err := docker.cli.ImageInspectWithRaw(ctx, containerInfos.Image)
 	if err != nil {
 		log.Panic("Error while fetching container", err)
 	}
-	if container.State.Running {
-		duration, _ := time.ParseDuration("5s")
-		if err = docker.cli.ContainerStop(context.Background(), containerId, &duration); err != nil {
-			log.Panic("Error while stopping container", err)
+	//Pulling Image
+	authToken := getContainerCredsToken(&containerInfos)
+	reader, err := docker.cli.ImagePull(ctx, containerInfos.Config.Image, types.ImagePullOptions{All: false, RegistryAuth: authToken})
+	if err != nil {
+		log.Panic("Error while pulling image:", err)
+	}
+	scanner := bufio.NewScanner(reader)
+	regex, err := regexp.Compile(`\b(sha256:[A-Fa-f0-9]{64})\b`)
+	if err != nil {
+		log.Panic("Error while compiling regex", err)
+	}
+	//While pulling image we check if the image is new
+	//If not we stop the update process
+	for scanner.Scan() {
+		line := scanner.Text()
+		if sha := regex.FindString(line); sha != "" {
+			log.Println("Pulling image with digest:", sha)
+			for _, digest := range imageInfos.RepoDigests {
+				//We get the digest from the repo digest (name@digest)
+				if regex.FindString(digest) == sha {
+					log.Println("Image already up to date, stopping process...")
+					return nil
+				}
+			}
 		}
 	}
-	docker.cli.ContainerRemove(context.Background(), containerId, types.ContainerRemoveOptions{
+	defer reader.Close()
+
+	//Checking if image has been updated
+	//If not we stop updating the container
+	previousImageId := containerInfos.Image
+	newImageId := docker.getImageIDFromName(containerInfos.Config.Image)
+	if previousImageId == newImageId {
+		return err
+	}
+
+	//Stopping Container
+	if containerInfos.State.Running {
+		duration, _ := time.ParseDuration("5s")
+		if err = docker.cli.ContainerStop(ctx, containerId, &duration); err != nil {
+			log.Panic("Error while stopping container:", err)
+		}
+	}
+	//Removing Container
+	docker.cli.ContainerRemove(ctx, containerId, types.ContainerRemoveOptions{
 		RemoveVolumes: false, RemoveLinks: false, Force: true,
 	})
-	serveraddress := container.Config.Labels["docker-ci.auth-server"]
-	password := container.Config.Labels["docker-ci.password"]
-	username := container.Config.Labels["docker-ci.username"]
-	var auth []byte
-	if serveraddress != "" && username != "" && password != "" {
-		auth, _ = json.Marshal(DockerAuth{Username: username, Password: password, Serveraddress: serveraddress})
+	//Recreating Container
+	createdContainer, err := docker.cli.ContainerCreate(ctx, containerInfos.Config, containerInfos.HostConfig, nil, nil, containerInfos.Name)
+	if err != nil {
+		log.Panic("Error while creating container:", err)
 	}
-	docker.cli.ImagePull(context.Background(), container.Config.Image, types.ImagePullOptions{All: false, RegistryAuth: string(auth)})
+	//Starting Container
+	if err := docker.cli.ContainerStart(ctx, createdContainer.ID, types.ContainerStartOptions{}); err != nil {
+		panic(err)
+	}
+
+	statusCh, errCh := docker.cli.ContainerWait(ctx, createdContainer.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			log.Panic("Container didn't start correctly:", err)
+		}
+	case <-statusCh:
+	}
+	return err
 }
 
 func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Message)) []string {
@@ -95,4 +155,36 @@ func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Messa
 		i++
 	}
 	return keys
+}
+
+/**
+ * Read auth config from container labels and return a base64 encoded string for docker.
+ */
+func getContainerCredsToken(container *types.ContainerJSON) string {
+	serveraddress := container.Config.Labels["docker-ci.auth-server"]
+	password := container.Config.Labels["docker-ci.password"]
+	username := container.Config.Labels["docker-ci.username"]
+	var auth []byte
+	if serveraddress != "" && username != "" && password != "" {
+		auth, _ = json.Marshal(DockerAuth{Username: username, Password: password, Serveraddress: serveraddress})
+		return string(auth)
+	} else {
+		return ""
+	}
+}
+
+func (docker *DockerClient) getImageIDFromName(imageName string) string {
+	images, err := docker.cli.ImageList(context.Background(), types.ImageListOptions{All: true})
+	if err != nil {
+		log.Println("Error while fetching images", err)
+		return ""
+	}
+	for _, image := range images {
+		for _, tag := range image.RepoTags {
+			if tag == imageName {
+				return image.ID
+			}
+		}
+	}
+	return ""
 }
