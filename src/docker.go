@@ -24,7 +24,7 @@ type DockerClient struct {
 }
 
 func InitDockerInstance() *DockerClient {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		log.Fatal("Docker instance error:", err)
 	}
