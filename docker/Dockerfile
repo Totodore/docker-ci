@@ -17,8 +17,6 @@ FROM alpine:latest
 
 ENV PORT 8080
 
-RUN apk add --no-cache ca-certificates
-
 COPY --from=builder app .
 
 EXPOSE 8080
