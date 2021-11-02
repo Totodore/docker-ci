@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -74,31 +75,32 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	}()
 	ctx := context.Background()
 	containerInfos, err := docker.cli.ContainerInspect(ctx, containerId)
+	name := containerInfos.Name[1:]
 	imageInfos, _, err := docker.cli.ImageInspectWithRaw(ctx, containerInfos.Image)
 	if err != nil {
-		log.Panic("Error while fetching container", err)
+		docker.panic(name, "Error while fetching container", err)
 	}
 	//Pulling Image
 	authToken := getContainerCredsToken(&containerInfos)
 	reader, err := docker.cli.ImagePull(ctx, containerInfos.Config.Image, types.ImagePullOptions{All: false, RegistryAuth: authToken})
 	if err != nil {
-		log.Panic("Error while pulling image:", err)
+		docker.panic(name, "Error while pulling image:", err)
 	}
 	scanner := bufio.NewScanner(reader)
 	regex, err := regexp.Compile(`\b(sha256:[A-Fa-f0-9]{64})\b`)
 	if err != nil {
-		log.Panic("Error while compiling regex", err)
+		docker.panic(name, "Error while compiling regex", err)
 	}
 	//While pulling image we check if the image is new
 	//If not we stop the update process
 	for scanner.Scan() {
 		line := scanner.Text()
 		if sha := regex.FindString(line); sha != "" {
-			log.Println("Pulling image with digest:", sha)
+			docker.print(name, "Pulling image with digest:", sha)
 			for _, digest := range imageInfos.RepoDigests {
 				//We get the digest from the repo digest (name@digest)
 				if regex.FindString(digest) == sha {
-					log.Println("Image already up to date, stopping process...")
+					docker.print(name, "Image already up to date, stopping process...")
 					return nil
 				}
 			}
@@ -110,7 +112,7 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	if containerInfos.State.Running {
 		duration, _ := time.ParseDuration("5s")
 		if err = docker.cli.ContainerStop(ctx, containerId, &duration); err != nil {
-			log.Panic("Error while stopping container:", err)
+			docker.panic(name, "Error while stopping container:", err)
 		}
 	}
 	//Removing Container
@@ -120,21 +122,21 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	//Recreating Container
 	createdContainer, err := docker.cli.ContainerCreate(ctx, containerInfos.Config, containerInfos.HostConfig, nil, nil, containerInfos.Name)
 	if err != nil {
-		log.Panic("Error while creating container:", err)
+		docker.panic(name, "Error while creating container:", err)
 	}
 	//Starting Container
 	if err := docker.cli.ContainerStart(ctx, createdContainer.ID, types.ContainerStartOptions{}); err != nil {
-		log.Panic("Error while starting container:", err)
+		docker.panic(name, "Error while starting container:", err)
 	}
 	//Removing former image
 	if _, err := docker.cli.ImageRemove(ctx, imageInfos.ID, types.ImageRemoveOptions{Force: true}); err != nil {
-		log.Panic("Error while removing former image:", err)
+		docker.panic(name, "Error while removing former image:", err)
 	}
 	statusCh, errCh := docker.cli.ContainerWait(ctx, createdContainer.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
-			log.Panic("Container didn't start correctly:", err)
+			docker.panic(name, "Container didn't start correctly:", err)
 		}
 	case <-statusCh:
 	}
@@ -150,6 +152,20 @@ func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Messa
 		i++
 	}
 	return keys
+}
+
+func (docker *DockerClient) panic(name string, args ...interface{}) {
+	log.Panicf("[%s] %v", name, strings.Join([]string(interfaceToStringSlice(args)), " "))
+}
+func (docker *DockerClient) print(name string, args ...interface{}) {
+	log.Printf("[%s] %v", name, strings.Join([]string(interfaceToStringSlice(args)), " "))
+}
+func interfaceToStringSlice(params []interface{}) []string {
+	var paramSlice []string
+	for _, param := range params {
+		paramSlice = append(paramSlice, param.(string))
+	}
+	return paramSlice
 }
 
 /**
