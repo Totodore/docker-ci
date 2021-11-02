@@ -17,8 +17,10 @@ You can specify different Env Var to the docker-ci to configure it as you want
 ### Basic conf
 |Name|Default|Description|
 |----|----|-----------|
-|`PORT`|`3000`|The port for the webhook server and the API in case of use|
-
+|`DOCKER_HOST`|` `|The link to the docker socket engine|
+|`PORT`|`8080`|The port for the webhook server and the API|
+|`PRIVATE_KEY`|`/var/run/docker.sock:ro`|A private key to encode security tokens|
+|`BASE_URL`|`http://localhost:8080`|The base url of the system|
 ## Base configuration :
 This is the default configuration for your container, you just have to add docker-ci.enable and the image url in your docker-compose.yml :
 
