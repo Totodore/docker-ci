@@ -39,3 +39,9 @@ const (
 	tag_image    ImageEvent = "tag"
 	untag_image  ImageEvent = "untag"
 )
+
+type DockerAuth struct {
+	Username      string `json:"username,omitempty"`
+	Password      string `json:"password,omitempty"`
+	Serveraddress string `json:"serveraddress,omitempty"`
+}

@@ -26,13 +26,13 @@ func main() {
 	docker = InitDockerInstance()
 	docker.events[start_container] = onCreateContainer
 	docker.events[stop_container] = onDestroyContainer
-	go docker.listenToEvents()
+	go docker.ListenToEvents()
 	loadContainersConfig()
 	startServer(onRequest)
 }
 
 func loadContainersConfig() {
-	containers := docker.getContainersEnabled()
+	containers := docker.GetContainersEnabled()
 	enabledContainers = make([]ContainerInfo, len(containers))
 	for _, container := range containers {
 		name := container.Names[0][1:]
@@ -45,6 +45,7 @@ func onRequest(name string) int {
 		return 400
 	}
 	log.Println("Request received for " + name)
+
 	return 200
 }
 func onCreateContainer(msg events.Message) {

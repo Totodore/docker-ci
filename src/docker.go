@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
@@ -28,8 +30,8 @@ func InitDockerInstance() *DockerClient {
 	return &DockerClient{cli, make(map[ContainerEvent]func(event events.Message))}
 }
 
-func (docker *DockerClient) listenToEvents() {
-	log.Println("Listening for container creation and deletion")
+func (docker *DockerClient) ListenToEvents() {
+	log.Printf("Listening for container %v", docker.mapKeys(docker.events))
 	body, err := docker.cli.Events(context.Background(), types.EventsOptions{
 		Filters: filters.NewArgs(filters.Arg("type", "container")),
 	})
@@ -46,11 +48,11 @@ func (docker *DockerClient) listenToEvents() {
 	}
 }
 
-func (docker *DockerClient) getContainersEnabled() []types.Container {
+func (docker *DockerClient) GetContainersEnabled() []types.Container {
 	docker.cli.ContainerList(context.Background(), types.ContainerListOptions{})
 	containers, err := docker.cli.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	enabledContainers := make([]types.Container, 0)
 	for _, container := range containers {
@@ -59,4 +61,38 @@ func (docker *DockerClient) getContainersEnabled() []types.Container {
 		}
 	}
 	return enabledContainers
+}
+func (docker *DockerClient) UpdateContainer(containerId string) {
+	container, err := docker.cli.ContainerInspect(context.Background(), containerId)
+	if err != nil {
+		log.Panic("Error while fetching container", err)
+	}
+	if container.State.Running {
+		duration, _ := time.ParseDuration("5s")
+		if err = docker.cli.ContainerStop(context.Background(), containerId, &duration); err != nil {
+			log.Panic("Error while stopping container", err)
+		}
+	}
+	docker.cli.ContainerRemove(context.Background(), containerId, types.ContainerRemoveOptions{
+		RemoveVolumes: false, RemoveLinks: false, Force: true,
+	})
+	serveraddress := container.Config.Labels["docker-ci.auth-server"]
+	password := container.Config.Labels["docker-ci.password"]
+	username := container.Config.Labels["docker-ci.username"]
+	var auth []byte
+	if serveraddress != "" && username != "" && password != "" {
+		auth, _ = json.Marshal(DockerAuth{Username: username, Password: password, Serveraddress: serveraddress})
+	}
+	docker.cli.ImagePull(context.Background(), container.Config.Image, types.ImagePullOptions{All: false, RegistryAuth: string(auth)})
+}
+
+func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Message)) []string {
+	keys := make([]string, len(m))
+
+	i := 0
+	for k := range m {
+		keys[i] = string(k)
+		i++
+	}
+	return keys
 }
