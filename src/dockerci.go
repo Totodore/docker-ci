@@ -1,9 +1,12 @@
-package main
+package dockerci
 
 import (
 	"log"
 	"os"
 	"strings"
+	"docker"
+	"http"
+	
 
 	"github.com/docker/docker/api/types/events"
 	"github.com/joho/godotenv"

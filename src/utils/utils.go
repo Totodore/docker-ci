@@ -1,4 +1,4 @@
-package main
+package utils
 
 func InterfaceToStringSlice(params []interface{}) []string {
 	var paramSlice []string

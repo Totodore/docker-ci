@@ -1,4 +1,4 @@
-package main
+package docker
 
 import (
 	"bufio"
@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"utils"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"

@@ -1,4 +1,4 @@
-package main
+package docker
 
 type ContainerEvent string
 type ImageEvent string
