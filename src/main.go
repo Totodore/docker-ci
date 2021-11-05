@@ -1,4 +1,4 @@
-package dockerci
+package main
 
 import (
 	"log"
