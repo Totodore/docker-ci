@@ -4,9 +4,9 @@ import (
 	"log"
 	"os"
 	"strings"
-	"docker"
-	"http"
-	
+
+	"dockerci/src/api"
+	"dockerci/src/docker"
 
 	"github.com/docker/docker/api/types/events"
 	"github.com/joho/godotenv"
@@ -17,7 +17,7 @@ type ContainerInfo struct {
 	Id    string
 }
 
-var docker *DockerClient
+var client *docker.DockerClient
 var enabledContainers []ContainerInfo
 
 //Parse the environment variables
@@ -31,16 +31,16 @@ func main() {
 			log.Fatal("Error loading .env file")
 		}
 	}
-	docker = InitDockerInstance()
-	docker.events[create_container] = onCreateContainer
-	docker.events[destroy_container] = onDestroyContainer
-	go docker.ListenToEvents()
+	client = docker.New()
+	client.Events[docker.Create_container] = onCreateContainer
+	client.Events[docker.Destroy_container] = onDestroyContainer
+	go client.ListenToEvents()
 	loadContainersConfig()
-	startServer(onRequest)
+	api.StartServer(onRequest)
 }
 
 func loadContainersConfig() {
-	containers := docker.GetContainersEnabled()
+	containers := client.GetContainersEnabled()
 	enabledContainers = make([]ContainerInfo, len(containers))
 	for _, container := range containers {
 		name := container.Names[0][1:]
@@ -54,7 +54,7 @@ func onRequest(name string) (int, string) {
 		return 400, "Container not found"
 	}
 	log.Println("Request received for service:", name)
-	if err := docker.UpdateContainer(containerInfos.Id); err != nil {
+	if err := client.UpdateContainer(containerInfos.Id); err != nil {
 		return 500, "Failed to update container " + name
 	}
 	log.Printf("Container %s successfully updated", name)

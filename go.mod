@@ -1,4 +1,4 @@
-module docker-ci
+module dockerci
 
 go 1.17
 
