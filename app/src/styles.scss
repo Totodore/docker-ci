@@ -1,0 +1,23 @@
+html,
+body {
+	// height: 100%;
+	overscroll-behavior: contain;
+	user-select: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-webkit-user-drag: none;
+	-khtml-user-drag: none;
+	-moz-user-drag: none;
+	-o-user-drag: none;
+	user-drag: none;
+	overflow: hidden;
+}
+body {
+	margin: 0;
+	padding: 0;
+	background-color: #212121;
+	font-family: Roboto, "Helvetica Neue", sans-serif;
+	color: #fff;
+}
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }

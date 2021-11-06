@@ -1,0 +1,11 @@
+<h1>Current containers created with CI/CD:</h1>
+<div class="container" *ngFor="let container of containerData">
+	<div class="row">
+		<p>{{ normalizeContainerNames(container.Names[0]) }}</p>
+		<button mat-icon-button color="accent" *ngIf="!container.isUpdating" (click)="update(container)" matTooltip="Update container image">
+			<mat-icon class="mat-18">update</mat-icon>
+		</button>
+		<mat-progress-spinner mode="indeterminate" color="accent" *ngIf="container.isUpdating"></mat-progress-spinner>
+	</div>
+	<mat-divider></mat-divider>
+</div>

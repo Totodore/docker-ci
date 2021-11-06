@@ -12,13 +12,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type ContainerInfo struct {
-	Names []string
-	Id    string
-}
-
 var client *docker.DockerClient
-var enabledContainers []ContainerInfo
+var enabledContainers []docker.ContainerInfo
 
 //Parse the environment variables
 //Init docker instance and bind events
@@ -36,15 +31,15 @@ func main() {
 	client.Events[docker.Destroy_container] = onDestroyContainer
 	go client.ListenToEvents()
 	loadContainersConfig()
-	api.StartServer(onRequest)
+	api.New(&enabledContainers, onRequest).Serve()
 }
 
 func loadContainersConfig() {
 	containers := client.GetContainersEnabled()
-	enabledContainers = make([]ContainerInfo, len(containers))
+	enabledContainers = make([]docker.ContainerInfo, len(containers))
 	for _, container := range containers {
 		name := container.Names[0][1:]
-		enabledContainers = append(enabledContainers, ContainerInfo{container.Names, container.ID})
+		enabledContainers = append(enabledContainers, docker.ContainerInfo{Names: container.Names, Id: container.ID})
 		log.Printf("Webhook available at: %s/hooks/%s", os.Getenv("BASE_URL"), name)
 	}
 }
@@ -70,7 +65,7 @@ func onDestroyContainer(msg events.Message) {
 }
 
 //Get a ContainerInfo object from a container name
-func getContainerFromName(name string) *ContainerInfo {
+func getContainerFromName(name string) *docker.ContainerInfo {
 	name = strings.ToLower(name)
 	for _, container := range enabledContainers {
 		for _, containerName := range container.Names {

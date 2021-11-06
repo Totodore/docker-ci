@@ -8,3 +8,5 @@ dist/
 .vscode/**
 data/**
 .github/
+node_modules/
+app/node_modules/

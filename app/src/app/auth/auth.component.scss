@@ -1,0 +1,28 @@
+:host {
+	display: flex;
+	min-height: 100vh;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	h1 {
+		text-align: center;
+		max-width: 500px;
+		color: white;
+		font-size: 30px;
+	}
+	.wrapper {
+		box-shadow: 0 0 0 0 rgb(0 0 0 / 20%), 0 0 0 0 rgb(0 0 0 / 14%), 0 0 0 0 rgb(0 0 0 / 12%);
+		border: 1px solid hsla(0, 0%, 100%, 0.12);
+		padding: 25px;
+		border-radius: 4px;
+	}
+	.wrapper,
+	form {
+		display: flex;
+		flex-direction: column;
+		color: white;
+		button {
+			margin-top: 10px;
+		}
+	}
+}
