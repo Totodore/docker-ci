@@ -1,7 +1,9 @@
-FROM golang:1.17.2 as builder
+FROM golang:1.17.2-alpine as go-builder
+
 # Define build env
 ENV GOOS linux
 ENV CGO_ENABLED 0
+ENV GOPATH=
 
 WORKDIR /app
 
@@ -11,14 +13,29 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o app ./src
+RUN go build -o server ./src
+
+FROM node:15.5-alpine as node-builder
+
+WORKDIR /app
+
+COPY app/package.json ./
+
+RUN npm install --force
+
+COPY app/ .
+
+RUN npm run build
 
 FROM alpine:latest
 
-ENV PORT 8080
+WORKDIR /app
 
-COPY --from=builder app .
+ENV PORT 80
 
-EXPOSE 8080
+COPY --from=go-builder /app/server .
+COPY --from=node-builder /app/dist ./dist
 
-CMD ./app
+EXPOSE 80
+
+CMD ./server

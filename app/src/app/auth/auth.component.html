@@ -1,0 +1,11 @@
+<div class="wrapper">
+	<h1>DockerCI Authentification</h1>
+	<form (submit)="submit($event)">
+		<mat-form-field appearance="outline" color="accent">
+			<mat-label>Password</mat-label>
+			<input type="password" matInput [(ngModel)]="password" [ngModelOptions]="{ standalone: true }">
+		</mat-form-field>
+		<button mat-stroked-button type="submit">Connection</button>
+	</form>
+
+</div>

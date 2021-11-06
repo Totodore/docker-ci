@@ -1,0 +1,26 @@
+:host {
+	width: 70%;
+	margin: 0 auto;
+	padding-top: 50px;
+	display: block;
+}
+.row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin: 0 7px;
+}
+p {
+	margin: 0;
+	height: 20px;
+}
+mat-progress-spinner {
+	width: 30px !important;
+	height: 30px !important;
+	margin: 5px 0px;
+	::ng-deep svg {
+		width: 30px !important;
+		height: 30px !important;
+	
+	}
+}

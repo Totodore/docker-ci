@@ -1,4 +1,4 @@
-package main
+package docker
 
 import (
 	"bufio"
@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"dockerci/src/utils"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
@@ -20,10 +22,10 @@ import (
 
 type DockerClient struct {
 	cli    *client.Client
-	events map[ContainerEvent]func(event events.Message) //Map with container event in key and function in value
+	Events map[ContainerEvent]func(event events.Message) //Map with container event in key and function in value
 }
 
-func InitDockerInstance() *DockerClient {
+func New() *DockerClient {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		log.Fatal("Docker instance error:", err)
@@ -38,7 +40,7 @@ func InitDockerInstance() *DockerClient {
 
 //Listen to container events and call the function associated with the event
 func (docker *DockerClient) ListenToEvents() {
-	log.Printf("Listening for container %v", docker.mapKeys(docker.events))
+	log.Printf("Listening for container %v", docker.mapKeys(docker.Events))
 	body, err := docker.cli.Events(context.Background(), types.EventsOptions{
 		Filters: filters.NewArgs(filters.Arg("type", "container")),
 	})
@@ -46,7 +48,7 @@ func (docker *DockerClient) ListenToEvents() {
 		select {
 		case msg := <-body:
 			//Get handler and if it exists and then check if msg type correspond to current event
-			if handler, ok := docker.events[ContainerEvent(msg.Action)]; msg.Type == events.ContainerEventType && ok {
+			if handler, ok := docker.Events[ContainerEvent(msg.Action)]; msg.Type == events.ContainerEventType && ok {
 				handler(msg)
 			}
 		case err := <-err:
@@ -162,12 +164,12 @@ func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Messa
 
 //Panic with container name
 func (docker *DockerClient) panic(name string, args ...interface{}) {
-	log.Panicf("[%s] %v", name, strings.Join(InterfaceToStringSlice(args), " "))
+	log.Panicf("[%s] %v", name, strings.Join(utils.InterfaceToStringSlice(args), " "))
 }
 
 //Print with container name
 func (docker *DockerClient) print(name string, args ...interface{}) {
-	log.Printf("[%s] %v", name, strings.Join(InterfaceToStringSlice(args), " "))
+	log.Printf("[%s] %v", name, strings.Join(utils.InterfaceToStringSlice(args), " "))
 }
 
 //Read auth config from container labels and return a base64 encoded string for docker.

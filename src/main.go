@@ -5,17 +5,15 @@ import (
 	"os"
 	"strings"
 
+	"dockerci/src/api"
+	"dockerci/src/docker"
+
 	"github.com/docker/docker/api/types/events"
 	"github.com/joho/godotenv"
 )
 
-type ContainerInfo struct {
-	Names []string
-	Id    string
-}
-
-var docker *DockerClient
-var enabledContainers []ContainerInfo
+var client *docker.DockerClient
+var enabledContainers []docker.ContainerInfo
 
 //Parse the environment variables
 //Init docker instance and bind events
@@ -28,20 +26,20 @@ func main() {
 			log.Fatal("Error loading .env file")
 		}
 	}
-	docker = InitDockerInstance()
-	docker.events[create_container] = onCreateContainer
-	docker.events[destroy_container] = onDestroyContainer
-	go docker.ListenToEvents()
+	client = docker.New()
+	client.Events[docker.Create_container] = onCreateContainer
+	client.Events[docker.Destroy_container] = onDestroyContainer
+	go client.ListenToEvents()
 	loadContainersConfig()
-	startServer(onRequest)
+	api.New(&enabledContainers, onRequest).Serve()
 }
 
 func loadContainersConfig() {
-	containers := docker.GetContainersEnabled()
-	enabledContainers = make([]ContainerInfo, len(containers))
+	containers := client.GetContainersEnabled()
+	enabledContainers = make([]docker.ContainerInfo, len(containers))
 	for _, container := range containers {
 		name := container.Names[0][1:]
-		enabledContainers = append(enabledContainers, ContainerInfo{container.Names, container.ID})
+		enabledContainers = append(enabledContainers, docker.ContainerInfo{Names: container.Names, Id: container.ID})
 		log.Printf("Webhook available at: %s/hooks/%s", os.Getenv("BASE_URL"), name)
 	}
 }
@@ -51,7 +49,7 @@ func onRequest(name string) (int, string) {
 		return 400, "Container not found"
 	}
 	log.Println("Request received for service:", name)
-	if err := docker.UpdateContainer(containerInfos.Id); err != nil {
+	if err := client.UpdateContainer(containerInfos.Id); err != nil {
 		return 500, "Failed to update container " + name
 	}
 	log.Printf("Container %s successfully updated", name)
@@ -67,7 +65,7 @@ func onDestroyContainer(msg events.Message) {
 }
 
 //Get a ContainerInfo object from a container name
-func getContainerFromName(name string) *ContainerInfo {
+func getContainerFromName(name string) *docker.ContainerInfo {
 	name = strings.ToLower(name)
 	for _, container := range enabledContainers {
 		for _, containerName := range container.Names {

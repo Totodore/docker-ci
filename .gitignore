@@ -108,6 +108,7 @@ wslport.ps1
 
 bin/
 dist/
+public/
 .vscode/**
 data/**
 mail.json
