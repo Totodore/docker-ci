@@ -32,6 +32,7 @@ FROM alpine:latest
 WORKDIR /app
 
 ENV PORT 80
+ENV GIN_MODE=release
 
 COPY --from=go-builder /app/server .
 COPY --from=node-builder /app/dist ./dist
