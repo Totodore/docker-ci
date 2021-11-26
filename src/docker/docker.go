@@ -87,33 +87,27 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	if err != nil {
 		docker.panic(name, "Error while fetching container", err)
 	}
-	//Pulling Image
-	authToken := docker.getContainerCredsToken(&containerInfos)
-	reader, err := docker.cli.ImagePull(ctx, containerInfos.Config.Image, types.ImagePullOptions{All: false, RegistryAuth: authToken})
-	if err != nil {
-		docker.panic(name, "Error while pulling image:", err)
-	}
-	scanner := bufio.NewScanner(reader)
-	regex, err := regexp.Compile(`\b(sha256:[A-Fa-f0-9]{64})\b`)
-	if err != nil {
-		docker.panic(name, "Error while compiling regex", err)
-	}
-	//While pulling image we check if the image is new
-	//If not we stop the update process
-	for scanner.Scan() {
-		line := scanner.Text()
-		if sha := regex.FindString(line); sha != "" {
-			docker.print(name, "Pulling image with digest:", sha)
-			for _, digest := range imageInfos.RepoDigests {
-				//We get the digest from the repo digest (name@digest)
-				if regex.FindString(digest) == sha {
-					docker.print(name, "Image already up to date, stopping process...")
-					return nil
-				}
-			}
+	if docker.isLocalImage(&containerInfos) {
+		docker.print(name, "Container is local image")
+		context := imageInfos.Config.Labels["docker-ci.dockerfile"]
+		if context == "" {
+			context = "."
+		}
+		if err := docker.buildDockerImage(imageInfos.Config.Labels["docker-ci.repo"], context, containerInfos.Image); err != nil {
+			docker.panic(name, "Error while building image", err)
+		}
+	} else {
+		docker.print(name, "Container is external image")
+		//Pulling Image
+		authToken := docker.getContainerCredsToken(&containerInfos)
+		status, err := docker.pullImage(containerInfos.Image, authToken, imageInfos)
+		if err != nil {
+			docker.panic(name, err)
+		}
+		if !status {
+			return nil
 		}
 	}
-	defer reader.Close()
 
 	//Stopping Container
 	if containerInfos.State.Running {
@@ -150,6 +144,57 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	return err
 }
 
+func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string, image string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(r.(string))
+		}
+	}()
+	ctx := context.Background()
+	//Building Image from git repository
+	reader, err := docker.cli.ImageBuild(ctx, nil, types.ImageBuildOptions{RemoteContext: repoLink, Dockerfile: dockerfile, NoCache: true, PullParent: true, ForceRemove: false, Tags: []string{image}})
+	if err != nil {
+		docker.panic("", "Error while building image:", err)
+	}
+	scanner := bufio.NewScanner(reader.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		docker.print(image, line)
+	}
+	defer reader.Body.Close()
+	return err
+}
+
+func (docker *DockerClient) pullImage(image string, authToken string, imageInfos types.ImageInspect) (status bool, err error) {
+	ctx := context.Background()
+	reader, err := docker.cli.ImagePull(ctx, image, types.ImagePullOptions{All: false, RegistryAuth: authToken})
+	if err != nil {
+		return false, errors.New("Error while pulling image:" + err.Error())
+	}
+	scanner := bufio.NewScanner(reader)
+	regex, err := regexp.Compile(`\b(sha256:[A-Fa-f0-9]{64})\b`)
+	if err != nil {
+		return false, errors.New("Error while compiling regex: " + err.Error())
+	}
+	//While pulling image we check if the image is new
+	//If not we stop the update process
+	for scanner.Scan() {
+		line := scanner.Text()
+		if sha := regex.FindString(line); sha != "" {
+			docker.print(image, "Pulling image with digest:", sha)
+			for _, digest := range imageInfos.RepoDigests {
+				//We get the digest from the repo digest (name@digest)
+				if regex.FindString(digest) == sha {
+					docker.print(image, "Image already up to date, stopping process...")
+					return false, nil
+				}
+			}
+		}
+	}
+	defer reader.Close()
+	return true, err
+}
+
 //Get the list of the listened events
 func (docker *DockerClient) mapKeys(m map[ContainerEvent]func(event events.Message)) []string {
 	keys := make([]string, len(m))
@@ -170,6 +215,10 @@ func (docker *DockerClient) panic(name string, args ...interface{}) {
 //Print with container name
 func (docker *DockerClient) print(name string, args ...interface{}) {
 	log.Printf("[%s] %v", name, strings.Join(utils.InterfaceToStringSlice(args), " "))
+}
+
+func (docker *DockerClient) isLocalImage(containerInfos *types.ContainerJSON) bool {
+	return containerInfos.Config.Labels["docker-ci.repo"] != ""
 }
 
 //Read auth config from container labels and return a base64 encoded string for docker.
