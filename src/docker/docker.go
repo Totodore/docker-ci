@@ -93,7 +93,9 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 		if context == "" {
 			context = "."
 		}
-		if err := docker.buildDockerImage(imageInfos.Config.Labels["docker-ci.repo"], context, containerInfos.Image); err != nil {
+		dockerfile := containerInfos.Config.Labels["docker-ci.dockerfile"]
+		repo := containerInfos.Config.Labels["docker-ci.repo"]
+		if err := docker.buildDockerImage(repo, dockerfile, containerInfos.Config.Image, ctx); err != nil {
 			docker.panic(name, "Error while building image", err)
 		}
 	} else {
@@ -144,15 +146,19 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	return err
 }
 
-func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string, image string) (err error) {
+func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string, image string, ctx context.Context) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(r.(string))
 		}
 	}()
-	ctx := context.Background()
 	//Building Image from git repository
-	reader, err := docker.cli.ImageBuild(ctx, nil, types.ImageBuildOptions{RemoteContext: repoLink, Dockerfile: dockerfile, NoCache: true, PullParent: true, ForceRemove: false, Tags: []string{image}})
+	reader, err := docker.cli.ImageBuild(ctx, nil, types.ImageBuildOptions{
+		RemoteContext: repoLink, Dockerfile: dockerfile,
+		NoCache: true, ForceRemove: true,
+		Remove: true,
+		Tags:   []string{image},
+	})
 	if err != nil {
 		docker.panic("", "Error while building image:", err)
 	}
@@ -217,6 +223,8 @@ func (docker *DockerClient) print(name string, args ...interface{}) {
 	log.Printf("[%s] %v", name, strings.Join(utils.InterfaceToStringSlice(args), " "))
 }
 
+//Determine if the container image is local or external from the label
+//If it contains a repo label it means that it is built locally from repository
 func (docker *DockerClient) isLocalImage(containerInfos *types.ContainerJSON) bool {
 	return containerInfos.Config.Labels["docker-ci.repo"] != ""
 }
