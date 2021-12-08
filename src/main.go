@@ -50,17 +50,19 @@ func onRequest(name string) (int, string) {
 	}
 	log.Println("Request received for service:", name)
 	if err := client.UpdateContainer(containerInfos.Id); err != nil {
+		log.Println("Error updating container:", err)
 		return 500, "Failed to update container " + name
 	}
 	log.Printf("Container %s successfully updated", name)
 	return 200, "Done"
 }
 func onCreateContainer(msg events.Message) {
-	log.Println("Container creation detected:", msg.Actor.Attributes["name"])
-	defer loadContainersConfig()
+	if client.IsContainerEnabled(msg.Actor.ID) {
+		log.Println("Container creation detected:", msg.Actor.Attributes["name"])
+		defer loadContainersConfig()
+	}
 }
 func onDestroyContainer(msg events.Message) {
-	log.Println("Container deletion detected:", msg.Actor.Attributes["name"])
 	defer loadContainersConfig()
 }
 

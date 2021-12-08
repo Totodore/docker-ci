@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -14,7 +16,6 @@ import (
 	"dockerci/src/utils"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -57,8 +58,17 @@ func (docker *DockerClient) ListenToEvents() {
 	}
 }
 
+func (docker *DockerClient) IsContainerEnabled(containerId string) bool {
+	container, err := docker.cli.ContainerInspect(context.Background(), containerId)
+	if err != nil {
+		return false
+	}
+	return container.Config.Labels["docker-ci.enable"] == "true"
+}
+
 //Get a slice with all the container that have docker-ci enabled
 func (docker *DockerClient) GetContainersEnabled() []types.Container {
+
 	containers, err := docker.cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
 		log.Panic(err)
@@ -74,10 +84,11 @@ func (docker *DockerClient) GetContainersEnabled() []types.Container {
 
 //This method will pull the container image, check if it is the same that the current
 //In case of a new one the container will be recreated and restarted
+//If the image has to be buit from a git repo it will build the image locally
 func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New(r.(string))
+			err = r.(error)
 		}
 	}()
 	ctx := context.Background()
@@ -87,33 +98,37 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	if err != nil {
 		docker.panic(name, "Error while fetching container", err)
 	}
-	//Pulling Image
-	authToken := docker.getContainerCredsToken(&containerInfos)
-	reader, err := docker.cli.ImagePull(ctx, containerInfos.Config.Image, types.ImagePullOptions{All: false, RegistryAuth: authToken})
-	if err != nil {
-		docker.panic(name, "Error while pulling image:", err)
-	}
-	scanner := bufio.NewScanner(reader)
-	regex, err := regexp.Compile(`\b(sha256:[A-Fa-f0-9]{64})\b`)
-	if err != nil {
-		docker.panic(name, "Error while compiling regex", err)
-	}
-	//While pulling image we check if the image is new
-	//If not we stop the update process
-	for scanner.Scan() {
-		line := scanner.Text()
-		if sha := regex.FindString(line); sha != "" {
-			docker.print(name, "Pulling image with digest:", sha)
-			for _, digest := range imageInfos.RepoDigests {
-				//We get the digest from the repo digest (name@digest)
-				if regex.FindString(digest) == sha {
-					docker.print(name, "Image already up to date, stopping process...")
-					return nil
-				}
-			}
+	if docker.isLocalImage(&containerInfos) {
+		docker.print(name, "Container is local image")
+		context := imageInfos.Config.Labels["docker-ci.dockerfile"]
+		if context == "" {
+			context = "."
+		}
+		dockerfile := containerInfos.Config.Labels["docker-ci.dockerfile"]
+		if dockerfile == "" {
+			dockerfile = "Dockerfile"
+		}
+		repo := containerInfos.Config.Labels["docker-ci.repo"]
+		imageInfos, _, _ := docker.cli.ImageInspectWithRaw(ctx, containerInfos.Image)
+		status, err := docker.buildDockerImage(repo, dockerfile, containerInfos.Config.Image, ctx, imageInfos.Config.Labels["repo-sha"])
+		if err != nil {
+			docker.panic(name, "Error while building image", err)
+		}
+		if !status {
+			return nil
+		}
+	} else {
+		docker.print(name, "Container is external image")
+		//Pulling Image
+		authToken := docker.getContainerCredsToken(&containerInfos)
+		status, err := docker.pullImage(containerInfos.Config.Image, authToken, imageInfos)
+		if err != nil {
+			docker.panic(name, err)
+		}
+		if !status {
+			return nil
 		}
 	}
-	defer reader.Close()
 
 	//Stopping Container
 	if containerInfos.State.Running {
@@ -139,15 +154,78 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	if _, err := docker.cli.ImageRemove(ctx, imageInfos.ID, types.ImageRemoveOptions{Force: true}); err != nil {
 		docker.panic(name, "Error while removing former image:", err)
 	}
-	statusCh, errCh := docker.cli.ContainerWait(ctx, createdContainer.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			docker.panic(name, "Container didn't start correctly:", err)
-		}
-	case <-statusCh:
+	filterArgs := filters.NewArgs(filters.KeyValuePair{Key: "dangling", Value: "true"})
+	//Remove all untagged image
+	if _, err = docker.cli.ImagesPrune(ctx, filterArgs); err != nil {
+		docker.panic(name, "Error while removing untagged image:", err)
 	}
 	return err
+}
+
+//Building Image from git repository
+func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string, image string, ctx context.Context, previousSha string) (status bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(r.(string))
+		}
+	}()
+	lastCommitSha, err := docker.getLastCommitSha(repoLink)
+	if err != nil {
+		panic("Error while getting last commit sha: " + err.Error())
+	}
+	if previousSha == lastCommitSha {
+		docker.print(image, "Image already up to date, stopping process...")
+		return false, nil
+	}
+	reader, err := docker.cli.ImageBuild(ctx, nil, types.ImageBuildOptions{
+		RemoteContext: repoLink,
+		Dockerfile:    dockerfile,
+		NoCache:       true,
+		ForceRemove:   true,
+		Remove:        true,
+		Tags:          []string{image},
+		Labels:        map[string]string{"repo-sha": lastCommitSha},
+	})
+	if err != nil {
+		docker.panic("", "Error while building image:", err)
+	}
+	scanner := bufio.NewScanner(reader.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		docker.print(image, line)
+	}
+	defer reader.Body.Close()
+	return true, err
+}
+
+func (docker *DockerClient) pullImage(image string, authToken string, imageInfos types.ImageInspect) (status bool, err error) {
+	ctx := context.Background()
+	reader, err := docker.cli.ImagePull(ctx, image, types.ImagePullOptions{All: false, RegistryAuth: authToken})
+	if err != nil {
+		return false, errors.New("Error while pulling image:" + err.Error())
+	}
+	scanner := bufio.NewScanner(reader)
+	regex, err := regexp.Compile(`\b(sha256:[A-Fa-f0-9]{64})\b`)
+	if err != nil {
+		return false, errors.New("Error while compiling regex: " + err.Error())
+	}
+	//While pulling image we check if the image is new
+	//If not we stop the update process
+	for scanner.Scan() {
+		line := scanner.Text()
+		if sha := regex.FindString(line); sha != "" {
+			docker.print(image, "Pulling image with digest:", sha)
+			for _, digest := range imageInfos.RepoDigests {
+				//We get the digest from the repo digest (name@digest)
+				if regex.FindString(digest) == sha {
+					docker.print(image, "Image already up to date, stopping process...")
+					return false, nil
+				}
+			}
+		}
+	}
+	defer reader.Close()
+	return true, err
 }
 
 //Get the list of the listened events
@@ -172,6 +250,12 @@ func (docker *DockerClient) print(name string, args ...interface{}) {
 	log.Printf("[%s] %v", name, strings.Join(utils.InterfaceToStringSlice(args), " "))
 }
 
+//Determine if the container image is local or external from the label
+//If it contains a repo label it means that it is built locally from repository
+func (docker *DockerClient) isLocalImage(containerInfos *types.ContainerJSON) bool {
+	return containerInfos.Config.Labels["docker-ci.repo"] != ""
+}
+
 //Read auth config from container labels and return a base64 encoded string for docker.
 func (docker *DockerClient) getContainerCredsToken(container *types.ContainerJSON) string {
 	serveraddress := container.Config.Labels["docker-ci.auth-server"]
@@ -187,4 +271,25 @@ func (docker *DockerClient) getContainerCredsToken(container *types.ContainerJSO
 	} else {
 		return ""
 	}
+}
+
+//Get the last commit sha from the git repository using git protocol
+//Regexs : https://regexr.com/6b5f6,
+func (docker *DockerClient) getLastCommitSha(remote string) (string, error) {
+
+	branch := strings.Replace(regexp.MustCompile(`#[A-Za-z]+`).FindString(remote), "#", "", -1)
+	remoteUrl := regexp.MustCompile(`(#\S+)|\.git`).ReplaceAllString(remote, "")
+	req, _ := http.NewRequest("GET", remoteUrl, nil)
+	req.Header.Set("User-Agent", "Docker-CI")
+	req.Header.Set("Content-Type", "application/x-git-upload-pack")
+	resp, err := http.Get(remoteUrl + ".git/info/refs?service=git-upload-pack")
+	if err != nil {
+		return "", err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	sha := strings.Split(regexp.MustCompile(`[0-9a-f]{5,50} refs/heads/`+branch).FindString(string(body)), " ")[0]
+	if err != nil {
+		return "", err
+	}
+	return sha, nil
 }

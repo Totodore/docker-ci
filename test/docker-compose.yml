@@ -1,7 +1,9 @@
 version: "3"
 services: 
   app:
-    image: ghcr.io/totodore/herogu-test-php:latest
+    build:
+      context: https://github.com/Totodore/herogu-test-php.git#main
+      dockerfile: docker/Dockerfile
     container_name: herogu-test-php
     volumes: 
       - "data:/data"
@@ -12,10 +14,12 @@ services:
     networks: 
       - "web"
     labels: 
-      docker-ci.enable: true
-      docker-ci.auth-server: ghcr.io
-      docker-ci.username: totodore
-      docker-ci.password: dc40612a01f34ea5a2c073e2203edfd2b65003a0
+      docker-ci.enable: "true"
+      docker-ci.repo: https://github.com/Totodore/herogu-test-php.git#main
+      docker-ci.dockerfile: docker/Dockerfile
+      # docker-ci.auth-server: ghcr.io
+      # docker-ci.username: totodore
+      # docker-ci.password: dc40612a01f34ea5a2c073e2203edfd2b65003a0
       # docker-ci.webhook-callback: 'true'
 
 networks: 
