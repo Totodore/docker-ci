@@ -14,7 +14,6 @@ import (
 	"dockerci/src/utils"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -57,6 +56,14 @@ func (docker *DockerClient) ListenToEvents() {
 	}
 }
 
+func (docker *DockerClient) IsContainerEnabled(containerId string) bool {
+	container, err := docker.cli.ContainerInspect(context.Background(), containerId)
+	if err != nil {
+		return false
+	}
+	return container.Config.Labels["docker-ci.enable"] == "true"
+}
+
 //Get a slice with all the container that have docker-ci enabled
 func (docker *DockerClient) GetContainersEnabled() []types.Container {
 	containers, err := docker.cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
@@ -74,6 +81,7 @@ func (docker *DockerClient) GetContainersEnabled() []types.Container {
 
 //This method will pull the container image, check if it is the same that the current
 //In case of a new one the container will be recreated and restarted
+//If the image has to be buit from a git repo it will build the image locally
 func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -135,24 +143,21 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	if _, err := docker.cli.ImageRemove(ctx, imageInfos.ID, types.ImageRemoveOptions{Force: true}); err != nil {
 		docker.panic(name, "Error while removing former image:", err)
 	}
-	statusCh, errCh := docker.cli.ContainerWait(ctx, createdContainer.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			docker.panic(name, "Container didn't start correctly:", err)
-		}
-	case <-statusCh:
+	filterArgs := filters.NewArgs(filters.KeyValuePair{Key: "dangling", Value: "true"})
+	//Remove all untagged image
+	if _, err = docker.cli.ImagesPrune(ctx, filterArgs); err != nil {
+		docker.panic(name, "Error while removing untagged image:", err)
 	}
 	return err
 }
 
+//Building Image from git repository
 func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string, image string, ctx context.Context) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(r.(string))
 		}
 	}()
-	//Building Image from git repository
 	reader, err := docker.cli.ImageBuild(ctx, nil, types.ImageBuildOptions{
 		RemoteContext: repoLink, Dockerfile: dockerfile,
 		NoCache: true, ForceRemove: true,
