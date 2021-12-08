@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -86,7 +88,7 @@ func (docker *DockerClient) GetContainersEnabled() []types.Container {
 func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New(r.(string))
+			err = r.(error)
 		}
 	}()
 	ctx := context.Background()
@@ -107,8 +109,13 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 			dockerfile = "Dockerfile"
 		}
 		repo := containerInfos.Config.Labels["docker-ci.repo"]
-		if err := docker.buildDockerImage(repo, dockerfile, containerInfos.Config.Image, ctx); err != nil {
+		imageInfos, _, _ := docker.cli.ImageInspectWithRaw(ctx, containerInfos.Image)
+		status, err := docker.buildDockerImage(repo, dockerfile, containerInfos.Config.Image, ctx, imageInfos.Config.Labels["repo-sha"])
+		if err != nil {
 			docker.panic(name, "Error while building image", err)
+		}
+		if !status {
+			return nil
 		}
 	} else {
 		docker.print(name, "Container is external image")
@@ -156,12 +163,20 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 }
 
 //Building Image from git repository
-func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string, image string, ctx context.Context) (err error) {
+func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string, image string, ctx context.Context, previousSha string) (status bool, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(r.(string))
 		}
 	}()
+	lastCommitSha, err := docker.getLastCommitSha(repoLink)
+	if err != nil {
+		panic("Error while getting last commit sha: " + err.Error())
+	}
+	if previousSha == lastCommitSha {
+		docker.print(image, "Image already up to date, stopping process...")
+		return false, nil
+	}
 	reader, err := docker.cli.ImageBuild(ctx, nil, types.ImageBuildOptions{
 		RemoteContext: repoLink,
 		Dockerfile:    dockerfile,
@@ -169,6 +184,7 @@ func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string,
 		ForceRemove:   true,
 		Remove:        true,
 		Tags:          []string{image},
+		Labels:        map[string]string{"repo-sha": lastCommitSha},
 	})
 	if err != nil {
 		docker.panic("", "Error while building image:", err)
@@ -179,7 +195,7 @@ func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string,
 		docker.print(image, line)
 	}
 	defer reader.Body.Close()
-	return err
+	return true, err
 }
 
 func (docker *DockerClient) pullImage(image string, authToken string, imageInfos types.ImageInspect) (status bool, err error) {
@@ -255,4 +271,25 @@ func (docker *DockerClient) getContainerCredsToken(container *types.ContainerJSO
 	} else {
 		return ""
 	}
+}
+
+//Get the last commit sha from the git repository using git protocol
+//Regexs : https://regexr.com/6b5f6,
+func (docker *DockerClient) getLastCommitSha(remote string) (string, error) {
+
+	branch := strings.Replace(regexp.MustCompile(`#[A-Za-z]+`).FindString(remote), "#", "", -1)
+	remoteUrl := regexp.MustCompile(`(#\S+)|\.git`).ReplaceAllString(remote, "")
+	req, _ := http.NewRequest("GET", remoteUrl, nil)
+	req.Header.Set("User-Agent", "Docker-CI")
+	req.Header.Set("Content-Type", "application/x-git-upload-pack")
+	resp, err := http.Get(remoteUrl + ".git/info/refs?service=git-upload-pack")
+	if err != nil {
+		return "", err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	sha := strings.Split(regexp.MustCompile(`[0-9a-f]{5,50} refs/heads/`+branch).FindString(string(body)), " ")[0]
+	if err != nil {
+		return "", err
+	}
+	return sha, nil
 }
