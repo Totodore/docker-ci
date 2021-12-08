@@ -66,6 +66,7 @@ func (docker *DockerClient) IsContainerEnabled(containerId string) bool {
 
 //Get a slice with all the container that have docker-ci enabled
 func (docker *DockerClient) GetContainersEnabled() []types.Container {
+
 	containers, err := docker.cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
 		log.Panic(err)
@@ -102,6 +103,9 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 			context = "."
 		}
 		dockerfile := containerInfos.Config.Labels["docker-ci.dockerfile"]
+		if dockerfile == "" {
+			dockerfile = "Dockerfile"
+		}
 		repo := containerInfos.Config.Labels["docker-ci.repo"]
 		if err := docker.buildDockerImage(repo, dockerfile, containerInfos.Config.Image, ctx); err != nil {
 			docker.panic(name, "Error while building image", err)
@@ -110,7 +114,7 @@ func (docker *DockerClient) UpdateContainer(containerId string) (err error) {
 		docker.print(name, "Container is external image")
 		//Pulling Image
 		authToken := docker.getContainerCredsToken(&containerInfos)
-		status, err := docker.pullImage(containerInfos.Image, authToken, imageInfos)
+		status, err := docker.pullImage(containerInfos.Config.Image, authToken, imageInfos)
 		if err != nil {
 			docker.panic(name, err)
 		}
@@ -159,10 +163,12 @@ func (docker *DockerClient) buildDockerImage(repoLink string, dockerfile string,
 		}
 	}()
 	reader, err := docker.cli.ImageBuild(ctx, nil, types.ImageBuildOptions{
-		RemoteContext: repoLink, Dockerfile: dockerfile,
-		NoCache: true, ForceRemove: true,
-		Remove: true,
-		Tags:   []string{image},
+		RemoteContext: repoLink,
+		Dockerfile:    dockerfile,
+		NoCache:       true,
+		ForceRemove:   true,
+		Remove:        true,
+		Tags:          []string{image},
 	})
 	if err != nil {
 		docker.panic("", "Error while building image:", err)
