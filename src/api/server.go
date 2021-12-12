@@ -2,43 +2,46 @@ package api
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
-	"dockerci/src/api/middleware"
 	"dockerci/src/docker"
+	"dockerci/src/utils"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gin-gonic/contrib/static"
-	"github.com/gin-gonic/gin"
+	"github.com/gorilla/mux"
 )
 
 type Server struct {
-	router     *gin.Engine
+	router     *mux.Router
 	port       string
 	containers *[]docker.ContainerInfo
 }
 
 func New(containers *[]docker.ContainerInfo, onRequest func(name string) (int, string)) *Server {
 	port := os.Getenv("PORT")
-	router := gin.Default()
+	router := mux.NewRouter()
 	server := &Server{router, port, containers}
-	router.Use(middleware.CORSMiddleware())
-	apiGroup := router.Group("/api")
-	apiGroup.GET("/", server.fetchHooks)
-	apiGroup.POST("/auth", server.auth)
-	router.GET("/hooks/:name", func(c *gin.Context) {
-		Handle(c, onRequest)
-	})
-	router.Use(static.Serve("/", static.LocalFile("./dist", true)))
-	log.Printf("Listening for requests at http://localhost:%s/hooks/", port)
+	router.Use(mux.CORSMethodMiddleware(router))
+	router.HandleFunc("/hooks/{name}", func(res http.ResponseWriter, req *http.Request) {
+		Handle(res, req, onRequest)
+	}).Methods("GET")
+	apiGroup := router.PathPrefix("/api").Subrouter()
+	apiGroup.HandleFunc("/", server.fetchHooks).Methods("GET")
+	apiGroup.HandleFunc("/auth", server.auth).Methods("POST")
+
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./dist")))
 	return server
 }
 
 func (s *Server) Serve() {
-	s.router.Run(":" + s.port)
+	log.Printf("Listening for requests at http://localhost:%s/hooks/", s.port)
+	if err := http.ListenAndServe(":"+s.port, s.router); err != nil {
+		log.Fatal(err)
+	}
 }
-func (s *Server) fetchHooks(c *gin.Context) {
+func (s *Server) fetchHooks(res http.ResponseWriter, req *http.Request) {
 	var filteredContainers []docker.ContainerInfo
 	for _, container := range *s.containers {
 		hasName := true
@@ -52,24 +55,30 @@ func (s *Server) fetchHooks(c *gin.Context) {
 			filteredContainers = append(filteredContainers, container)
 		}
 	}
-	c.JSON(200, filteredContainers)
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(200)
+	res.Write(utils.ToJSON(filteredContainers))
 }
-func (s *Server) auth(c *gin.Context) {
+func (s *Server) auth(res http.ResponseWriter, req *http.Request) {
 	var data AuthRequest
-	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+	if err := utils.FromJSON(req.Body, &data); err != nil {
+		res.WriteHeader(400)
+		res.Write(utils.ToJSON(map[string]string{"error": err.Error()}))
 		return
 	}
 	if data.Password != os.Getenv("PASSWORD") {
-		c.JSON(401, gin.H{"error": "Invalid password"})
+		res.WriteHeader(401)
+		res.Write(utils.ToJSON(map[string]string{"error": "Invalid password"}))
 		return
 	}
 	token := jwt.New(jwt.SigningMethodHS256)
 	auth, err := token.SignedString([]byte(os.Getenv("PRIVATE_KEY")))
 	if err != nil {
 		log.Println(err)
-		c.JSON(500, gin.H{"error": "Internal server error"})
+		res.WriteHeader(500)
+		res.Write(utils.ToJSON(map[string]string{"error": "Internal server error"}))
 		return
 	}
-	c.JSON(200, gin.H{"token": auth})
+	res.WriteHeader(200)
+	res.Write(utils.ToJSON(map[string]string{"token": auth}))
 }

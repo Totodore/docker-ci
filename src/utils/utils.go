@@ -1,6 +1,10 @@
 package utils
 
-import "math/rand"
+import (
+	"encoding/json"
+	"io"
+	"math/rand"
+)
 
 func InterfaceToStringSlice(params []interface{}) []string {
 	var paramSlice []string
@@ -25,4 +29,15 @@ func RandStringRunes(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+func ToJSON(data interface{}) []byte {
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return []byte("{}")
+	}
+	return bytes
+}
+func FromJSON(body io.ReadCloser, obj interface{}) error {
+	return json.NewDecoder(body).Decode(&obj)
 }

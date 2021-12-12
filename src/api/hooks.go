@@ -3,18 +3,18 @@ package api
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gorilla/mux"
 )
 
 //Handler for webhooks
 //Trigger onRequest when a webhook is received
-func Handle(c *gin.Context, onRequest func(name string) (int, string)) {
-	name := c.Params.ByName("name")
+func Handle(w http.ResponseWriter, req *http.Request, onRequest func(name string) (int, string)) {
+	name := mux.Vars(req)["name"]
 	if len(name) == 0 {
-		c.Status(http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 	} else {
 		status, msg := onRequest(name)
-		c.Status(status)
-		c.String(status, msg)
+		w.WriteHeader(status)
+		w.Write([]byte(msg))
 	}
 }
