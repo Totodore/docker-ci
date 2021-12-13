@@ -49,8 +49,8 @@ func onRequest(name string) (int, string) {
 		return 400, "Container not found"
 	}
 	log.Println("Request received for service:", name)
-	if err := client.UpdateContainer(containerInfos.Id); err != nil {
-		log.Println("Error updating container:", err)
+	if err := client.NewRequest(containerInfos.Id, name); err != nil {
+		log.Println("Error updating container "+name, err)
 		return 500, "Failed to update container " + name
 	}
 	log.Printf("Container %s successfully updated", name)
