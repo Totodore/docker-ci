@@ -17,6 +17,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/gorilla/websocket"
 )
 
 type ContainerAgent struct {
@@ -27,9 +28,10 @@ type ContainerAgent struct {
 	containerInfos types.ContainerJSON
 	imageInfos     types.ImageInspect
 	ctx            context.Context
+	sock           *websocket.Conn
 }
 
-func NewContainerAgent(docker *DockerClient, containerId string, name string) *ContainerAgent {
+func NewContainerAgent(docker *DockerClient, containerId string, name string, sock *websocket.Conn) *ContainerAgent {
 	ctx := context.Background()
 	containerInfos, err := docker.cli.ContainerInspect(ctx, containerId)
 	imageInfos, _, err1 := docker.cli.ImageInspectWithRaw(ctx, containerInfos.Image)
@@ -45,6 +47,7 @@ func NewContainerAgent(docker *DockerClient, containerId string, name string) *C
 		name:           name,
 		ctx:            ctx,
 		cli:            docker.cli,
+		sock:           sock,
 	}
 }
 
@@ -167,6 +170,9 @@ func (agent *ContainerAgent) buildDockerImage(repoLink string, dockerfile string
 	return true, err
 }
 
+//Pull an image from a container registry with optional credentials
+//If the image already exists it returns false and
+//If the image is successfuly pulled it returns true
 func (agent *ContainerAgent) pullImage(image string, authToken string, imageInfos types.ImageInspect) (status bool, err error) {
 	reader, err := agent.cli.ImagePull(agent.ctx, image, types.ImagePullOptions{All: false, RegistryAuth: authToken})
 	if err != nil {
@@ -232,8 +238,12 @@ func (agent *ContainerAgent) getContainerCredsToken() string {
 //Get the last commit sha from the git repository using git protocol
 //Regexs : https://regexr.com/6b5f6,
 func (agent *ContainerAgent) getLastCommitSha(remote string) (string, error) {
-
+	//We find the from the remote url branch name
 	branch := strings.Replace(regexp.MustCompile(`#[A-Za-z]+`).FindString(remote), "#", "", -1)
+	if branch == "" {
+		branch = "master"
+	}
+	//We get the last commit sha from the git protocol on the selected branch
 	remoteUrl := regexp.MustCompile(`(#\S+)|\.git`).ReplaceAllString(remote, "")
 	req, _ := http.NewRequest("GET", remoteUrl, nil)
 	req.Header.Set("User-Agent", "Docker-CI")
@@ -250,10 +260,18 @@ func (agent *ContainerAgent) getLastCommitSha(remote string) (string, error) {
 	return sha, nil
 }
 
+func (agent *ContainerAgent) emit(event string, data interface{}) {
+	if agent.sock != nil {
+		agent.sock.WriteJSON(data)
+	}
+}
+
+//Get a docker-ci container label value
 func (agent *ContainerAgent) getLabel(key string) string {
 	return agent.containerInfos.Config.Labels["docker-ci."+key]
 }
 
+//Get a docker-ci image label value
 func (agent *ContainerAgent) getImageLabel(key string) string {
 	return agent.imageInfos.Config.Labels["docker-ci."+key]
 }

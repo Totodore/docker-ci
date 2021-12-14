@@ -11,6 +11,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
 
 type Server struct {
@@ -18,8 +19,9 @@ type Server struct {
 	port       string
 	containers *[]docker.ContainerInfo
 }
+type RequestHandler func(name string, c *websocket.Conn) (int, string)
 
-func New(containers *[]docker.ContainerInfo, onRequest func(name string) (int, string)) *Server {
+func New(containers *[]docker.ContainerInfo, onRequest RequestHandler) *Server {
 	port := os.Getenv("PORT")
 	router := mux.NewRouter()
 	server := &Server{router, port, containers}

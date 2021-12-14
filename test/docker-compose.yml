@@ -3,7 +3,7 @@ services:
   app:
     image: air-api
     build:
-      context: https://Totodore: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@github.com/Totodore/air-api.git#master
+      context: https://totodore:${TOKEN}@github.com/totodore/air-api.git#master
       dockerfile: Dockerfile
     container_name: air-api
     volumes: 
@@ -18,8 +18,8 @@ services:
       docker-ci.enable: "true"
       # docker-ci.auth-server: ghcr.io
       # docker-ci.username: totodore
-      # docker-ci.password: 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
-      docker-ci.repo: https://Totodore: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@github.com/Totodore/air-api.git#master
+      # docker-ci.password: ${TOKEN}
+      docker-ci.repo: https://totodore:${TOKEN}@github.com/totodore/air-api.git#master
       docker-ci.dockerfile: Dockerfile
 
 networks: 

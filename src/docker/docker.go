@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/gorilla/websocket"
 )
 
 type DockerClient struct {
@@ -72,8 +73,8 @@ func (docker *DockerClient) GetContainersEnabled() []types.Container {
 	return enabledContainers
 }
 
-func (docker *DockerClient) NewRequest(containerId string, name string) error {
-	containerAgent := NewContainerAgent(docker, containerId, name)
+func (docker *DockerClient) NewRequest(containerId string, name string, sock *websocket.Conn) error {
+	containerAgent := NewContainerAgent(docker, containerId, name, sock)
 	docker.containerAgents = append(docker.containerAgents, containerAgent)
 	return containerAgent.UpdateContainer()
 }
