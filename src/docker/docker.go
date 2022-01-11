@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
@@ -49,6 +50,7 @@ func (docker *DockerClient) ListenToEvents() {
 	}
 }
 
+// Check if a container has a docker-ci enable label
 func (docker *DockerClient) IsContainerEnabled(containerId string) bool {
 	container, err := docker.cli.ContainerInspect(context.Background(), containerId)
 	if err != nil {
@@ -73,10 +75,14 @@ func (docker *DockerClient) GetContainersEnabled() []types.Container {
 	return enabledContainers
 }
 
+// Create a new request and build a new container agent that will handle update
 func (docker *DockerClient) NewRequest(containerId string, name string, sock *websocket.Conn) error {
 	containerAgent := NewContainerAgent(docker, containerId, name, sock)
-	docker.containerAgents = append(docker.containerAgents, containerAgent)
-	return containerAgent.UpdateContainer()
+	err := containerAgent.UpdateContainer()
+	if containerAgent.sock != nil {
+		containerAgent.sock.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(time.Second))
+	}
+	return err
 }
 
 //Get the list of the listened events

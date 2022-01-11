@@ -60,18 +60,23 @@ func (agent *ContainerAgent) UpdateContainer() (err error) {
 			switch t := r.(type) {
 			case string:
 				err = errors.New(t)
+				agent.emit(Error, t)
 			case error:
 				err = t
+				agent.emit(Error, t)
 			default:
 				err = errors.New("unknown panic")
+				agent.emit(Error, err)
 			}
 		}
 	}()
 	if err != nil {
 		agent.panic("Error while fetching container", err)
 	}
+	agent.emit(Start, nil)
 	if agent.isLocalImage() {
 		agent.print("Container is local image")
+		agent.emit(Build, nil)
 		context := agent.imageInfos.Config.Labels["dockerfile"]
 		if context == "" {
 			context = "."
@@ -85,11 +90,13 @@ func (agent *ContainerAgent) UpdateContainer() (err error) {
 		if err != nil {
 			agent.panic("Error while building image", err)
 		}
+		agent.emit(BuildEnd, map[string]interface{}{"status": status})
 		if !status {
 			return nil
 		}
 	} else {
 		agent.print("Container is external image")
+		agent.emit(Pull, nil)
 		//Pulling Image
 		authToken := agent.getContainerCredsToken()
 		agent.print(agent.containerInfos.Config.Image)
@@ -97,12 +104,14 @@ func (agent *ContainerAgent) UpdateContainer() (err error) {
 		if err != nil {
 			agent.panic(err)
 		}
+		agent.emit(PullEnd, map[string]interface{}{"status": status})
 		if !status {
 			return nil
 		}
 	}
 
 	//Stopping Container
+	agent.emit(Stop, nil)
 	if agent.containerInfos.State.Running {
 		duration, _ := time.ParseDuration("5s")
 		if err = agent.cli.ContainerStop(agent.ctx, agent.containerId, &duration); err != nil {
@@ -110,19 +119,23 @@ func (agent *ContainerAgent) UpdateContainer() (err error) {
 		}
 	}
 	//Removing Container
+	agent.emit(Remove, nil)
 	agent.cli.ContainerRemove(agent.ctx, agent.containerId, types.ContainerRemoveOptions{
 		RemoveVolumes: false, RemoveLinks: false, Force: true,
 	})
 	//Recreating Container
+	agent.emit(Recreate, nil)
 	createdContainer, err := agent.cli.ContainerCreate(agent.ctx, agent.containerInfos.Config, agent.containerInfos.HostConfig, nil, nil, agent.containerInfos.Name)
 	if err != nil {
 		agent.panic("Error while creating container:", err)
 	}
 	//Starting Container
+	agent.emit(Start, nil)
 	if err := agent.cli.ContainerStart(agent.ctx, createdContainer.ID, types.ContainerStartOptions{}); err != nil {
 		agent.panic("Error while starting container:", err)
 	}
 	//Removing former image
+	agent.emit(RemoveImage, nil)
 	if _, err := agent.cli.ImageRemove(agent.ctx, agent.imageInfos.ID, types.ImageRemoveOptions{Force: true}); err != nil {
 		agent.panic("Error while removing former image:", err)
 	}
@@ -131,6 +144,7 @@ func (agent *ContainerAgent) UpdateContainer() (err error) {
 	if _, err = agent.cli.ImagesPrune(agent.ctx, filterArgs); err != nil {
 		agent.panic("Error while removing untagged image:", err)
 	}
+	agent.emit(End, nil)
 	return err
 }
 
@@ -164,7 +178,7 @@ func (agent *ContainerAgent) buildDockerImage(repoLink string, dockerfile string
 	scanner := bufio.NewScanner(reader.Body)
 	for scanner.Scan() {
 		line := scanner.Text()
-		agent.print(line)
+		agent.emit(BuildMessage, line)
 	}
 	defer reader.Body.Close()
 	return true, err
@@ -187,6 +201,7 @@ func (agent *ContainerAgent) pullImage(image string, authToken string, imageInfo
 	//If not we stop the update process
 	for scanner.Scan() {
 		line := scanner.Text()
+		agent.emit(PullMessage, line)
 		if sha := regex.FindString(line); sha != "" {
 			agent.print("Pulling image with digest:", sha)
 			for _, digest := range imageInfos.RepoDigests {
@@ -260,9 +275,21 @@ func (agent *ContainerAgent) getLastCommitSha(remote string) (string, error) {
 	return sha, nil
 }
 
-func (agent *ContainerAgent) emit(event string, data interface{}) {
+//Emit a message to the current socket
+func (agent *ContainerAgent) emit(event StreamEvent, data interface{}) {
+	var dataStruct []byte
 	if agent.sock != nil {
-		agent.sock.WriteJSON(data)
+		switch t := data.(type) {
+		case string:
+			dataStruct = []byte(t)
+		case nil:
+			break
+		case error:
+			dataStruct = []byte(t.Error())
+		default:
+			dataStruct = utils.ToJSON(t)
+		}
+		agent.sock.WriteMessage(websocket.TextMessage, dataStruct)
 	}
 }
 
