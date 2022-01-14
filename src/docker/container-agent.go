@@ -20,6 +20,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+//Represent the container update process
 type ContainerAgent struct {
 	docker         *DockerClient
 	cli            *client.Client
@@ -63,11 +64,11 @@ func (agent *ContainerAgent) UpdateContainer() (err error) {
 				agent.emit(Error, t)
 			case error:
 				err = t
-				agent.emit(Error, t)
+				agent.emit(Error, err.Error())
 			default:
 				err = errors.New("unknown panic")
-				agent.emit(Error, err)
 			}
+			agent.emit(Error, map[string]interface{}{"error": err.Error()})
 		}
 	}()
 	if err != nil {
