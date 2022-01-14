@@ -1,10 +1,11 @@
 version: "3"
 services: 
   app:
+    image: air-api
     build:
-      context: https://github.com/Totodore/herogu-test-php.git#main
-      dockerfile: docker/Dockerfile
-    container_name: herogu-test-php
+      context: https://totodore:${TOKEN}@github.com/totodore/air-api.git#master
+      dockerfile: Dockerfile
+    container_name: air-api
     volumes: 
       - "data:/data"
     expose:
@@ -15,12 +16,11 @@ services:
       - "web"
     labels: 
       docker-ci.enable: "true"
-      docker-ci.repo: https://github.com/Totodore/herogu-test-php.git#main
-      docker-ci.dockerfile: docker/Dockerfile
       # docker-ci.auth-server: ghcr.io
       # docker-ci.username: totodore
-      # docker-ci.password: dc40612a01f34ea5a2c073e2203edfd2b65003a0
-      # docker-ci.webhook-callback: 'true'
+      # docker-ci.password: ${TOKEN}
+      docker-ci.repo: https://totodore:${TOKEN}@github.com/totodore/air-api.git#master
+      docker-ci.dockerfile: Dockerfile
 
 networks: 
   web:

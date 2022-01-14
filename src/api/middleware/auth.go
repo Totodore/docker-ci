@@ -3,11 +3,11 @@ package middleware
 import (
 	"errors"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gin-gonic/gin"
 )
 
 type JWTClaims struct {
@@ -15,17 +15,18 @@ type JWTClaims struct {
 	jwt.StandardClaims
 }
 
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		auth := c.GetHeader("Authorization")
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
 		_, err := getPayload(auth)
 		if err != nil {
 			log.Println(err)
-			c.AbortWithStatus(403)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Unauthorized"))
 		} else {
-			c.Next()
+			next.ServeHTTP(w, r)
 		}
-	}
+	})
 }
 
 func getPayload(auth string) (*JWTClaims, error) {

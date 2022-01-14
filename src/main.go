@@ -9,6 +9,7 @@ import (
 	"dockerci/src/docker"
 
 	"github.com/docker/docker/api/types/events"
+	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
@@ -43,14 +44,14 @@ func loadContainersConfig() {
 		log.Printf("Webhook available at: %s/hooks/%s", os.Getenv("BASE_URL"), name)
 	}
 }
-func onRequest(name string) (int, string) {
+func onRequest(name string, sock *websocket.Conn) (int, string) {
 	containerInfos := getContainerFromName(name)
 	if containerInfos == nil {
 		return 400, "Container not found"
 	}
 	log.Println("Request received for service:", name)
-	if err := client.UpdateContainer(containerInfos.Id); err != nil {
-		log.Println("Error updating container:", err)
+	if err := client.NewRequest(containerInfos.Id, name, sock); err != nil {
+		log.Println("Error updating container "+name, err)
 		return 500, "Failed to update container " + name
 	}
 	log.Printf("Container %s successfully updated", name)

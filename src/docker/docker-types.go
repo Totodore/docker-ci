@@ -2,6 +2,7 @@ package docker
 
 type ContainerEvent string
 type ImageEvent string
+type StreamEvent int
 
 const (
 	Attach_container        ContainerEvent = "attach"
@@ -50,3 +51,20 @@ type DockerAuth struct {
 	Password      string `json:"password,omitempty"`
 	Serveraddress string `json:"serveraddress,omitempty"`
 }
+
+const (
+	Start        StreamEvent = iota
+	Pull         StreamEvent = iota
+	PullMessage  StreamEvent = iota
+	PullEnd      StreamEvent = iota
+	Build        StreamEvent = iota
+	BuildMessage StreamEvent = iota
+	BuildEnd     StreamEvent = iota
+	Stop         StreamEvent = iota
+	Recreate     StreamEvent = iota
+	Restart      StreamEvent = iota
+	Error        StreamEvent = iota
+	RemoveImage  StreamEvent = iota
+	Remove       StreamEvent = iota
+	End          StreamEvent = iota
+)

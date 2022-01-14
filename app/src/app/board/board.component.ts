@@ -34,8 +34,10 @@ export class BoardComponent implements OnInit {
   public async update(el: ContainerInfo) {
     el.isUpdating = true;
     try {
-      await this.http.get(environment.production ? '/hooks' + el.Names[0] + '/' : 'http://localhost:8081/hooks' + el.Names[0]).toPromise();
+      await this.http.get(environment.production ? '/hooks' + el.Names[0] : 'http://localhost:8081/hooks' + el.Names[0]).toPromise();
     } catch (e) {
+      if ((e as HttpErrorResponse).status < 300)
+        return;
       this.snackbar.open(`Error updating ${this.normalizeContainerNames(el.Names[0])}`, 'Close', { duration: 5000 });
       console.error(e);
     } finally {
