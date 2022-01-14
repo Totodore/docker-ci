@@ -87,7 +87,7 @@ func (agent *ContainerAgent) UpdateContainer() (err error) {
 			dockerfile = "Dockerfile"
 		}
 		repo := agent.getLabel("repo")
-		status, err := agent.buildDockerImage(repo, dockerfile, agent.imageInfos.Config.Image, agent.getImageLabel("repo-sha"))
+		status, err := agent.buildDockerImage(repo, dockerfile, agent.containerInfos.Config.Image, agent.getImageLabel("repo-sha"))
 		if err != nil {
 			agent.panic("Error while building image", err)
 		}
@@ -171,7 +171,7 @@ func (agent *ContainerAgent) buildDockerImage(repoLink string, dockerfile string
 		ForceRemove:   true,
 		Remove:        true,
 		Tags:          []string{image},
-		Labels:        map[string]string{"repo-sha": lastCommitSha},
+		Labels:        map[string]string{"docker-ci.repo-sha": lastCommitSha},
 	})
 	if err != nil {
 		agent.panic("while building image:", err)
@@ -231,7 +231,7 @@ func (agent *ContainerAgent) print(args ...interface{}) {
 //Determine if the container image is local or external from the label
 //If it contains a repo label it means that it is built locally from repository
 func (agent *ContainerAgent) isLocalImage() bool {
-	return agent.containerInfos.Config.Labels["repo"] != ""
+	return agent.getLabel("repo") != ""
 }
 
 //Read auth config from container labels and return a base64 encoded string for docker.
