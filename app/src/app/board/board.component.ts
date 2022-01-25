@@ -34,7 +34,8 @@ export class BoardComponent implements OnInit {
   public async update(el: ContainerInfo) {
     el.isUpdating = true;
     try {
-      await this.http.get(environment.production ? '/hooks' + el.Names[0] : 'http://localhost:8081/hooks' + el.Names[0]).toPromise();
+      await this.http.get(environment.production ? '/hooks' + el.Names[0] : 'http://localhost:8081/hooks' + el.Names[0], { responseType: "text" as const }).toPromise();
+      this.snackbar.open('Container updated', '', { duration: 2000 });
     } catch (e) {
       if ((e as HttpErrorResponse).status < 300)
         return;
